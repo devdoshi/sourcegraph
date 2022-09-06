@@ -42,6 +42,8 @@ type AutoindexingServiceResolver interface {
 	QueueAutoIndexJobsForRepo(ctx context.Context, args *autoindexinggraphql.QueueAutoIndexJobsForRepoArgs) ([]resolvers.LSIFIndexResolver, error)
 	UpdateRepositoryIndexConfiguration(ctx context.Context, args *autoindexinggraphql.UpdateRepositoryIndexConfigurationArgs) (*resolvers.EmptyResponse, error)
 	RepositorySummary(ctx context.Context, id graphql.ID) (resolvers.CodeIntelRepositorySummaryResolver, error)
+	CodeIntelligenceInferenceScript(ctx context.Context) (string, error)
+	UpdateCodeIntelligenceInferenceScript(ctx context.Context, script string) (*EmptyResponse, error)
 }
 
 type UploadsServiceResolver interface {

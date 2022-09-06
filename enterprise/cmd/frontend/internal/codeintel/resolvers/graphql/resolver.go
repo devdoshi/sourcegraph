@@ -164,6 +164,14 @@ func (r *Resolver) PreviewRepositoryFilter(ctx context.Context, args *policiesgr
 	return r.resolver.PoliciesRootResolver().PreviewRepositoryFilter(ctx, args)
 }
 
+func (r *Resolver) CodeIntelligenceInferenceScript(ctx context.Context) (_ string, err error) {
+	return r.resolver.AutoIndexingRootResolver().CodeIntelligenceInferenceScript(ctx)
+}
+
+func (r *Resolver) UpdateCodeIntelligenceInferenceScript(ctx context.Context, script string) (_ *gql.EmptyResponse, err error) {
+	return &gql.EmptyResponse{}, r.resolver.AutoIndexingRootResolver().UpdateCodeIntelligenceInferenceScript(ctx, script)
+}
+
 func (r *Resolver) PreviewGitObjectFilter(ctx context.Context, id graphql.ID, args *policiesgraphql.PreviewGitObjectFilterArgs) (_ []policiesgraphql.GitObjectFilterPreviewResolver, err error) {
 	return r.resolver.PoliciesRootResolver().PreviewGitObjectFilter(ctx, id, args)
 }
