@@ -43,7 +43,7 @@ type AutoindexingServiceResolver interface {
 	UpdateRepositoryIndexConfiguration(ctx context.Context, args *autoindexinggraphql.UpdateRepositoryIndexConfigurationArgs) (*resolvers.EmptyResponse, error)
 	RepositorySummary(ctx context.Context, id graphql.ID) (resolvers.CodeIntelRepositorySummaryResolver, error)
 	CodeIntelligenceInferenceScript(ctx context.Context) (string, error)
-	UpdateCodeIntelligenceInferenceScript(ctx context.Context, script string) (*EmptyResponse, error)
+	UpdateCodeIntelligenceInferenceScript(ctx context.Context, args *autoindexinggraphql.UpdateCodeIntelligenceInferenceScriptArgs) (*EmptyResponse, error)
 }
 
 type UploadsServiceResolver interface {

@@ -12,7 +12,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/internal/actor"
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/shared"
-	"github.com/sourcegraph/sourcegraph/internal/codeintel/sharedresolvers"
 	resolvers "github.com/sourcegraph/sourcegraph/internal/codeintel/sharedresolvers"
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
@@ -33,7 +32,7 @@ type RootResolver interface {
 	RepositorySummary(ctx context.Context, id graphql.ID) (_ resolvers.CodeIntelRepositorySummaryResolver, err error)
 	GitBlobCodeIntelInfo(ctx context.Context, args *GitTreeEntryCodeIntelInfoArgs) (_ GitBlobCodeIntelSupportResolver, err error)
 	GitTreeCodeIntelInfo(ctx context.Context, args *GitTreeEntryCodeIntelInfoArgs) (resolver GitTreeCodeIntelSupportResolver, err error)
-	RequestLanguageSupport(ctx context.Context, args *RequestLanguageSupportArgs) (_ *sharedresolvers.EmptyResponse, err error)
+	RequestLanguageSupport(ctx context.Context, args *RequestLanguageSupportArgs) (_ *resolvers.EmptyResponse, err error)
 	RequestedLanguageSupport(ctx context.Context) (_ []string, err error)
 
 	// AutoIndexing
@@ -42,7 +41,7 @@ type RootResolver interface {
 	InferedIndexConfiguration(ctx context.Context, repositoryID int, commit string) (_ *config.IndexConfiguration, _ bool, err error)
 	InferedIndexConfigurationHints(ctx context.Context, repositoryID int, commit string) (_ []config.IndexJobHint, err error)
 	CodeIntelligenceInferenceScript(ctx context.Context) (script string, err error)
-	UpdateCodeIntelligenceInferenceScript(ctx context.Context, script string) (err error)
+	UpdateCodeIntelligenceInferenceScript(ctx context.Context, args *UpdateCodeIntelligenceInferenceScriptArgs) (err error)
 
 	// Symbols client
 	GetSupportedByCtags(ctx context.Context, filepath string, repoName api.RepoName) (bool, string, error)
@@ -289,8 +288,12 @@ func (r *rootResolver) CodeIntelligenceInferenceScript(ctx context.Context) (scr
 	return r.autoindexSvc.GetInferenceScript(ctx)
 }
 
-func (r *rootResolver) UpdateCodeIntelligenceInferenceScript(ctx context.Context, script string) (err error) {
-	return r.autoindexSvc.SetInferenceScript(ctx, script)
+type UpdateCodeIntelligenceInferenceScriptArgs struct {
+	Script string
+}
+
+func (r *rootResolver) UpdateCodeIntelligenceInferenceScript(ctx context.Context, args *UpdateCodeIntelligenceInferenceScriptArgs) (err error) {
+	return r.autoindexSvc.SetInferenceScript(ctx, args.Script)
 }
 
 type GitTreeEntryCodeIntelInfoArgs struct {
@@ -408,7 +411,7 @@ func (r *rootResolver) RepositorySummary(ctx context.Context, id graphql.ID) (_ 
 		return nil, err
 	}
 
-	summary := sharedresolvers.RepositorySummary{
+	summary := resolvers.RepositorySummary{
 		RecentUploads:           recentUploads,
 		RecentIndexes:           recentIndexes,
 		LastUploadRetentionScan: lastUploadRetentionScan,
@@ -417,9 +420,9 @@ func (r *rootResolver) RepositorySummary(ctx context.Context, id graphql.ID) (_ 
 
 	// Create a new prefetcher here as we only want to cache upload and index records in
 	// the same graphQL request, not across different request.
-	prefetcher := sharedresolvers.NewPrefetcher(r.autoindexSvc, r.uploadSvc)
+	prefetcher := resolvers.NewPrefetcher(r.autoindexSvc, r.uploadSvc)
 
-	return sharedresolvers.NewRepositorySummaryResolver(r.autoindexSvc, r.uploadSvc, r.policySvc, summary, prefetcher, errTracer), nil
+	return resolvers.NewRepositorySummaryResolver(r.autoindexSvc, r.uploadSvc, r.policySvc, summary, prefetcher, errTracer), nil
 }
 
 // HERE HERE HERE
@@ -436,7 +439,7 @@ type RequestLanguageSupportArgs struct {
 	Language string
 }
 
-func (r *rootResolver) RequestLanguageSupport(ctx context.Context, args *RequestLanguageSupportArgs) (_ *sharedresolvers.EmptyResponse, err error) {
+func (r *rootResolver) RequestLanguageSupport(ctx context.Context, args *RequestLanguageSupportArgs) (_ *resolvers.EmptyResponse, err error) {
 	ctx, _, endObservation := r.operations.requestLanguageSupport.With(ctx, &err, observation.Args{})
 	defer endObservation(1, observation.Args{})
 
@@ -449,7 +452,7 @@ func (r *rootResolver) RequestLanguageSupport(ctx context.Context, args *Request
 		return nil, err
 	}
 
-	return &sharedresolvers.EmptyResponse{}, nil
+	return &resolvers.EmptyResponse{}, nil
 }
 
 func (r *rootResolver) SetRequestLanguageSupport(ctx context.Context, userID int, language string) (err error) {
