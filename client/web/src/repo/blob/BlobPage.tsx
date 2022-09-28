@@ -180,12 +180,13 @@ export const BlobPage: React.FunctionComponent<React.PropsWithChildren<BlobPageP
                 { name: 'formattedBlobInfoOrError', parentSpan: span },
                 fetchSpan =>
                     fetchBlob({ repoName, revision, filePath, format: HighlightResponseFormat.HTML_PLAINTEXT }).pipe(
-                        map(blob => {
+                        map(({ blob, stencil }) => {
                             if (blob === null) {
                                 return blob
                             }
 
                             const blobInfo: BlobPageInfo = {
+                                stencil,
                                 content: blob.content,
                                 html: blob.highlight.html ?? '',
                                 repoName,
@@ -230,7 +231,7 @@ export const BlobPage: React.FunctionComponent<React.PropsWithChildren<BlobPageP
                                 : HighlightResponseFormat.HTML_HIGHLIGHT,
                         })
                     ),
-                    map(blob => {
+                    map(({ blob, stencil }) => {
                         if (blob === null) {
                             return blob
                         }
@@ -244,6 +245,7 @@ export const BlobPage: React.FunctionComponent<React.PropsWithChildren<BlobPageP
                         }
 
                         const blobInfo: BlobPageInfo = {
+                            stencil,
                             content: blob.content,
                             html: blob.highlight.html ?? '',
                             lsif: blob.highlight.lsif ?? '',

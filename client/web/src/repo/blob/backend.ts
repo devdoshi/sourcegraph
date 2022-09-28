@@ -6,7 +6,13 @@ import { dataOrThrowErrors, gql } from '@sourcegraph/http-client'
 import { makeRepoURI } from '@sourcegraph/shared/src/util/url'
 
 import { requestGraphQL } from '../../backend/graphql'
-import { BlobFileFields, BlobResult, BlobVariables, HighlightResponseFormat } from '../../graphql-operations'
+import {
+    BlobFileFields,
+    BlobResult,
+    BlobStencilFields,
+    BlobVariables,
+    HighlightResponseFormat,
+} from '../../graphql-operations'
 import { useExperimentalFeatures } from '../../stores'
 
 /**
@@ -36,7 +42,12 @@ interface FetchBlobOptions {
     format?: HighlightResponseFormat
 }
 
-export const fetchBlob = memoizeObservable((options: FetchBlobOptions): Observable<BlobFileFields | null> => {
+interface FetchBlobResponse {
+    blob: BlobFileFields | null
+    stencil: BlobStencilFields['stencil'] | null
+}
+
+export const fetchBlob = memoizeObservable((options: FetchBlobOptions): Observable<FetchBlobResponse> => {
     const { repoName, revision, filePath, disableTimeout, format } = applyDefaultValuesToFetchBlobOptions(options)
 
     // We only want to include HTML data if explicitly requested. We always
@@ -57,6 +68,11 @@ export const fetchBlob = memoizeObservable((options: FetchBlobOptions): Observab
             ) {
                 repository(name: $repoName) {
                     commit(rev: $revision) {
+                        blob(path: $filePath) {
+                            lsif {
+                                ...BlobStencilFields
+                            }
+                        }
                         file(path: $filePath) {
                             ...BlobFileFields
                         }
@@ -73,6 +89,19 @@ export const fetchBlob = memoizeObservable((options: FetchBlobOptions): Observab
                     lsif
                 }
             }
+
+            fragment BlobStencilFields on GitBlobLSIFData {
+                stencil {
+                    start {
+                        line
+                        character
+                    }
+                    end {
+                        line
+                        character
+                    }
+                }
+            }
         `,
         { repoName, revision, filePath, disableTimeout, format, html }
     ).pipe(
@@ -81,7 +110,11 @@ export const fetchBlob = memoizeObservable((options: FetchBlobOptions): Observab
             if (!data.repository?.commit) {
                 throw new Error('Commit not found')
             }
-            return data.repository.commit.file
+
+            return {
+                blob: data.repository.commit.file,
+                stencil: data.repository.commit.blob?.lsif?.stencil ?? null,
+            }
         })
     )
 }, fetchBlobCacheKey)

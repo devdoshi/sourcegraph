@@ -1,17 +1,13 @@
 import { Facet, RangeSetBuilder } from '@codemirror/state'
-import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin, ViewUpdate } from '@codemirror/view'
+import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin } from '@codemirror/view'
 
-import { CodeIntelligenceRange } from '@sourcegraph/shared/src/codeintel/legacy-extensions/lsif/ranges'
+import { BlobStencilFields } from '../../../graphql-operations'
 
 class FocusManager implements PluginValue {
     public decorations: DecorationSet = Decoration.none
 
     constructor(view: EditorView) {
         this.decorations = this.computeDecorations(view)
-    }
-
-    public update(update: ViewUpdate): void {
-        this.decorations = this.computeDecorations(update.view)
     }
 
     private computeDecorations(view: EditorView): DecorationSet {
@@ -26,19 +22,24 @@ class FocusManager implements PluginValue {
 
             const result = view.state.facet(keyboardNavigation)?.[0]
             if (result) {
-                const startLine = result.at(0)?.range.start.line
-                const endLine = result?.at(-1)?.range.end.line
-
+                const startLine = result.at(0)?.start.line
+                const endLine = result?.at(-1)?.end.line
+                console.log(startLine, endLine)
                 // Cache current line object
                 let line = fromLine
+                let char = null
 
                 if (startLine !== undefined && endLine !== undefined) {
                     // Iterate over the rendered line (numbers) and get the
                     // corresponding occurrences from the highlighting table.
                     for (let index = startLine; index < endLine; index++) {
-                        const {
-                            range: { start, end },
-                        } = result[index]
+                        const { start, end } = result[index]
+                        char = start.character
+
+                        if (line.number === start.line && char === start.character) {
+                            // TODO: Work out why query seems to return duplicates
+                            continue
+                        }
 
                         // Fetch new line information if necessary
                         if (line.number !== start.line + 1) {
@@ -52,6 +53,7 @@ class FocusManager implements PluginValue {
                                 tabIndex: '0',
                             },
                         })
+                        console.log('Adding decoration on line', line.from, 'character', from, 'to', to)
                         builder.add(from, to, decoration)
                     }
                 }
@@ -64,7 +66,10 @@ class FocusManager implements PluginValue {
     }
 }
 
-export const keyboardNavigation = Facet.define<CodeIntelligenceRange[] | null, CodeIntelligenceRange[][] | null>({
+export const keyboardNavigation = Facet.define<
+    BlobStencilFields['stencil'] | null,
+    BlobStencilFields['stencil'][] | null
+>({
     static: true,
     // TODO better compare
     compareInput: (rangesA, rangesB) => rangesA?.length === rangesB?.length,

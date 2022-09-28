@@ -162,7 +162,7 @@ export const Blob: React.FunctionComponent<BlobProps> = props => {
                 navigateToLineOnAnyClick: navigateToLineOnAnyClick ?? false,
             }),
             syntaxHighlight.of(blobInfo),
-            keyboardNavigation.of(tokenRanges),
+            keyboardNavigation.of(blobInfo.stencil),
             pinnedRangeField.init(() => (hasPin ? position : null)),
             extensionsController !== null && !navigateToLineOnAnyClick
                 ? sourcegraphExtensions({
