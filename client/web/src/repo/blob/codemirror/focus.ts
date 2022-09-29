@@ -1,30 +1,20 @@
 import { Facet, RangeSetBuilder } from '@codemirror/state'
-import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin, WidgetType } from '@codemirror/view'
+import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin, ViewUpdate } from '@codemirror/view'
 
 import { BlobStencilFields } from '../../../graphql-operations'
-
-class ButtonWidget extends WidgetType {
-    constructor(private content: string) {
-        super()
-    }
-
-    /* eslint-disable-next-line id-length */
-    public eq(other: ButtonWidget): boolean {
-        return this.content === other.content
-    }
-
-    public toDOM(): HTMLElement {
-        const button = document.createElement('button')
-        button.textContent = this.content
-        return button
-    }
-}
 
 class FocusManager implements PluginValue {
     public decorations: DecorationSet = Decoration.none
 
     constructor(view: EditorView) {
         this.decorations = this.computeDecorations(view)
+    }
+
+    public update(update: ViewUpdate): void {
+        if (update.viewportChanged) {
+            // TODO: Handle view changes
+            // this.decorations = this.computeDecorations(update.view)
+        }
     }
 
     private computeDecorations(view: EditorView): DecorationSet {
@@ -44,14 +34,12 @@ class FocusManager implements PluginValue {
                 console.log(startLine, endLine)
                 // Cache current line object
                 let line = fromLine
-                let char = null
 
                 if (startLine !== undefined && endLine !== undefined) {
                     // Iterate over the rendered line (numbers) and get the
                     // corresponding occurrences from the highlighting table.
                     for (let index = startLine; index < endLine; index++) {
                         const { start, end } = result[index]
-                        char = start.character
 
                         // Fetch new line information if necessary
                         if (line.number !== start.line + 1) {
@@ -64,15 +52,10 @@ class FocusManager implements PluginValue {
                         const decoration = Decoration.mark({
                             attributes: {
                                 tabIndex: '0',
+                                role: 'button',
                             },
                         })
 
-                        // TODO: Would be great to have these as buttons
-                        // const decoration = Decoration.replace({
-                        //     widget: new ButtonWidget(view.state.sliceDoc(from, to)),
-                        // })
-
-                        console.log(to, from, start.character, end.character)
                         builder.add(from, to, decoration)
                     }
                 }

@@ -85,6 +85,7 @@ import { BlobProps, updateBrowserHistoryIfChanged } from '../Blob'
 import { Container } from './react-interop'
 import {
     distinctWordAtCoords,
+    distinctWordAtCursor,
     offsetToUIPosition,
     preciseOffsetAtCoords,
     rangesContain,
@@ -358,7 +359,7 @@ export const hovercardSource = Facet.define<HovercardSource, HovercardSource>({
 class HoverManager implements PluginValue {
     private nextOffset = new Subject<number | null>()
     private subscription: Subscription
-    // private otherSubscription: Subscription
+    private otherSubscription: Subscription
 
     constructor(
         private readonly view: EditorView,
@@ -396,26 +397,23 @@ class HoverManager implements PluginValue {
                 })
             })
 
-        // this.otherSubscription = fromEvent<MouseEvent>(this.view.dom, 'keyup')
-        //     .pipe(
-        //         filter(event =>
-        //             ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes((event as KeyboardEvent).key)
-        //         ),
-        //         distinctWordAtCursor(this.view)
-        //     )
-        //     .subscribe(position => {
-        //         console.log('Got position', position)
-        //         this.view.dispatch({
-        //             effects: this.setHovercardPosition.of(
-        //                 position
-        //                     ? {
-        //                           ...position,
-        //                           range: offsetToUIPosition(this.view.state.doc, position.from, position.to),
-        //                       }
-        //                     : null
-        //             ),
-        //         })
-        //     })
+        this.otherSubscription = fromEvent<KeyboardEvent>(this.view.dom, 'keydown')
+            .pipe(
+                filter(event => event.key === 'Enter'),
+                distinctWordAtCursor(this.view)
+            )
+            .subscribe(position => {
+                this.view.dispatch({
+                    effects: this.setHovercardPosition.of(
+                        position
+                            ? {
+                                  ...position,
+                                  range: offsetToUIPosition(this.view.state.doc, position.from, position.to),
+                              }
+                            : null
+                    ),
+                })
+            })
 
         this.view.dom.addEventListener('mouseleave', this.mouseleave)
     }
@@ -427,6 +425,7 @@ class HoverManager implements PluginValue {
     public destroy(): void {
         this.view.dom.removeEventListener('mouseleave', this.mouseleave)
         this.subscription.unsubscribe()
+        this.otherSubscription.unsubscribe()
     }
 }
 
@@ -459,26 +458,16 @@ class Hovercard implements TooltipView {
     private props: BlobProps | null = null
     public overlap = true
     private subscription: Subscription
-    private keyboardSubscription: Observable<boolean>
     private nextPinned = new Subject<boolean>()
 
-    constructor(
-        private readonly view: EditorView,
-        private readonly range: HovercardRange,
-        private readonly triggerWithKeyboard?: boolean
-    ) {
+    constructor(private readonly view: EditorView, private readonly range: HovercardRange) {
         this.dom = document.createElement('div')
-
-        // this.keyboardSubscription = fromEvent<MouseEvent>(this.view.dom, 'keyup')
-        //     .pipe(map(event => (event as KeyboardEvent).key === 'Enter'))
-        //     .pipe(startWith(false))
 
         this.subscription = combineLatest([
             this.nextContainer,
             this.view.state.facet(hovercardSource)(view, range.range.start),
             this.nextProps.pipe(startWith(view.state.facet(blobPropsFacet))),
             this.nextPinned.pipe(startWith(range.pinned ?? false)),
-            // this.keyboardSubscription,
         ]).subscribe(([container, hovercardData, props, pinned]) => {
             // undefined means the data is still loading
             if (hovercardData.hoverOrError !== undefined) {

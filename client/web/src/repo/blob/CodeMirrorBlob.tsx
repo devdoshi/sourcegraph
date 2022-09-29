@@ -257,6 +257,13 @@ export const Blob: React.FunctionComponent<BlobProps> = props => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [position, hasPin])
 
+    // Focus blob on load
+    useEffect(() => {
+        if (editor) {
+            editor.focus()
+        }
+    }, [editor])
+
     return (
         <div
             ref={setContainer}

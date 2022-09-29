@@ -172,12 +172,14 @@ export function distinctWordAtCursor(
 ): OperatorFunction<{ x: number; y: number }, { from: number; to: number } | null> {
     return pipe(
         scan((position: { from: number; to: number } | null, coords) => {
-            const selected = window.getSelection()
-            if (!selected) {
-                return false
+            let range
+
+            if (document.activeElement) {
+                range = document.activeElement.getClientRects()[0]
+            } else {
+                range = window.getSelection()?.getRangeAt(0).getClientRects()[0]
             }
 
-            const [range] = selected.getRangeAt(0).getClientRects()
             if (!range) {
                 return null
             }
