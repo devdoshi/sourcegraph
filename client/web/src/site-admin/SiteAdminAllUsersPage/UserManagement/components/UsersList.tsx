@@ -88,7 +88,7 @@ const DEFAULT_FILTERS = {
     maxEventsCount: '',
     lastActiveAt: '',
     createdAt: '',
-    deletedAt: '',
+    deletedAt: '{"isNegated":true}',
 }
 
 const dateRangeQueryParameterToVariable = (
@@ -450,7 +450,8 @@ export const UsersList: React.FunctionComponent<UsersListProps> = ({ onActionEnd
                         ]}
                         note={
                             <Text as="span">
-                                Note: Events is the count of <Link to="/help/admin/pricing">all billable events</Link>{' '} performed by a user.
+                                Note: Events is the count of <Link to="/help/admin/pricing">all billable events</Link>{' '}
+                                performed by a user.
                             </Text>
                         }
                     />
