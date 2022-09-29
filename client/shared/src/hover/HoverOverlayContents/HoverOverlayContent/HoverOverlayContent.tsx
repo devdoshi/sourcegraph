@@ -73,8 +73,6 @@ export const HoverOverlayContent: React.FunctionComponent<
                         className={classNames('test-hover-badge', badgeClassName, hoverOverlayStyle.badgeLabel)}
                         href={linkURL}
                         tooltip={hoverMessage}
-                        // TODO Fix ordering
-                        tabIndex={-1}
                     >
                         {text}
                     </Badge>

@@ -122,7 +122,7 @@ function implementationResponseToLocations(
     }
 
     return {
-        locations: lsifObject.implementations.nodes.map(node => nodeToLocation(textDocument.uri, node)),
+        locations: lsifObject.implementations.nodes.map(node => nodeToLocation(textDocument, node)),
         endCursor: lsifObject.implementations.pageInfo.endCursor,
     }
 }

@@ -146,7 +146,6 @@ export function distinctWordAtCoords(
             if (offset === null) {
                 return null
             }
-            console.log(offset)
 
             // Still hovering over the same word
             if (position && position.from <= offset && position.to >= offset) {

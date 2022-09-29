@@ -87,7 +87,6 @@ export const Blob: React.FunctionComponent<BlobProps> = props => {
         location,
         history,
         blameHunks,
-        tokenRanges,
 
         // Reference panel specific props
         disableStatusBar,
@@ -181,7 +180,7 @@ export const Blob: React.FunctionComponent<BlobProps> = props => {
         // further below. However they are still needed here because we need to
         // set initial values when we re-initialize the editor.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [onSelection, blobInfo, tokenRanges, extensionsController, disableStatusBar, disableDecorations]
+        [onSelection, blobInfo, extensionsController, disableStatusBar, disableDecorations]
     )
 
     const editor = useCodeMirror(container, blobInfo.content, extensions, {
