@@ -85,7 +85,6 @@ import { BlobProps, updateBrowserHistoryIfChanged } from '../Blob'
 import { Container } from './react-interop'
 import {
     distinctWordAtCoords,
-    distinctWordAtCursor,
     offsetToUIPosition,
     preciseOffsetAtCoords,
     rangesContain,
@@ -383,24 +382,6 @@ class HoverManager implements PluginValue {
                     )
                 }),
                 distinctWordAtCoords(this.view)
-            )
-            .subscribe(position => {
-                this.view.dispatch({
-                    effects: this.setHovercardPosition.of(
-                        position
-                            ? {
-                                  ...position,
-                                  range: offsetToUIPosition(this.view.state.doc, position.from, position.to),
-                              }
-                            : null
-                    ),
-                })
-            })
-
-        this.otherSubscription = fromEvent<KeyboardEvent>(this.view.dom, 'keydown')
-            .pipe(
-                filter(event => event.key === 'Enter'),
-                distinctWordAtCursor(this.view)
             )
             .subscribe(position => {
                 this.view.dispatch({

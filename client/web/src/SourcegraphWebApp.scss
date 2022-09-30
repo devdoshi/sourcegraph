@@ -30,10 +30,23 @@ body,
 }
 
 // TODO: Update styles
-.sourcegraph-document-focus:focus {
-    background-color: rgba(174, 203, 250, 0.33);
-    box-shadow: 0 0 0 2px #aecbfa;
-    outline-style: none;
+.sourcegraph-document-focus {
+    // Reset button styles
+    border: none;
+    margin: 0;
+    padding: 0;
+    width: auto;
+    overflow: visible;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: normal;
+
+    &:focus {
+        background-color: rgba(174, 203, 250, 0.33);
+        box-shadow: 0 0 0 2px #aecbfa;
+        outline-style: none;
+    }
 }
 
 // Selection highlight is the background color for matched/highlighted tokens,

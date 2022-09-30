@@ -1,13 +1,70 @@
-import { Facet, RangeSetBuilder } from '@codemirror/state'
-import { Decoration, DecorationSet, EditorView, PluginValue, ViewPlugin, ViewUpdate } from '@codemirror/view'
+import { Extension, Facet, RangeSetBuilder, StateEffectType } from '@codemirror/state'
+import {
+    Decoration,
+    DecorationSet,
+    EditorView,
+    PluginValue,
+    ViewPlugin,
+    ViewUpdate,
+    WidgetType,
+} from '@codemirror/view'
+
+import { createUpdateableField } from '@sourcegraph/shared/src/components/CodeMirrorEditor'
+import { UIRange } from '@sourcegraph/shared/src/util/url'
 
 import { BlobStencilFields } from '../../../graphql-operations'
 
+import { hovercardRanges } from './hovercard'
+import { offsetToUIPosition } from './utils'
+
+class ButtonWidget extends WidgetType {
+    constructor(
+        private view: EditorView,
+        private setTokencardPosition: StateEffectType<TokencardRange | null>,
+        private from: number,
+        private to: number
+    ) {
+        super()
+    }
+
+    /* eslint-disable-next-line id-length*/
+    public eq(other: ButtonWidget): boolean {
+        // return true
+        return this.to === other.to && this.from === other.from
+    }
+
+    public toDOM(): HTMLElement {
+        const button = document.createElement('button')
+        button.className = 'sourcegraph-document-focus'
+        button.textContent = this.view.state.sliceDoc(this.from, this.to)
+        button.addEventListener('click', () => {
+            // TODO, sort out cleanup
+            this.view.dom.addEventListener('keydown', event => {
+                if (event.key === 'Escape') {
+                    this.view.dispatch({
+                        effects: this.setTokencardPosition.of(null),
+                    })
+                    button.focus()
+                }
+            })
+
+            this.view.dispatch({
+                effects: this.setTokencardPosition.of({
+                    from: this.from,
+                    to: this.to,
+                    range: offsetToUIPosition(this.view.state.doc, this.from, this.to),
+                }),
+            })
+        })
+
+        return button
+    }
+}
+
 class FocusManager implements PluginValue {
     public decorations: DecorationSet = Decoration.none
-
-    constructor(view: EditorView) {
-        this.decorations = this.computeDecorations(view)
+    constructor(view: EditorView, setTokencardPosition: StateEffectType<TokencardRange | null>) {
+        this.decorations = this.computeDecorations(view, setTokencardPosition)
     }
 
     public update(update: ViewUpdate): void {
@@ -17,7 +74,10 @@ class FocusManager implements PluginValue {
         }
     }
 
-    private computeDecorations(view: EditorView): DecorationSet {
+    private computeDecorations(
+        view: EditorView,
+        setTokencardPosition: StateEffectType<TokencardRange | null>
+    ): DecorationSet {
         const builder = new RangeSetBuilder<Decoration>()
 
         try {
@@ -48,20 +108,9 @@ class FocusManager implements PluginValue {
                         const from = line.from + start.character
                         const to = view.state.doc.line(end.line + 1).from + end.character
 
-                        /**
-                         * TODO: Ideal solution here might be to replace some of the hovercard logic.
-                         * 1. Convert all of these decorations into <buttons>
-                         * 2. Add onClicks to these buttons that triggers similar to `setHovercardPosition`
-                         * 3. Add event listener 'ESC' that will remove all hovercard positions, and (if applicable) return focus to active button.
-                         */
-                        const decoration = Decoration.mark({
-                            class: 'sourcegraph-document-focus',
-                            attributes: {
-                                tabIndex: '0',
-                                role: 'button',
-                            },
+                        const decoration = Decoration.replace({
+                            widget: new ButtonWidget(view, setTokencardPosition, from, to),
                         })
-
                         builder.add(from, to, decoration)
                     }
                 }
@@ -74,6 +123,31 @@ class FocusManager implements PluginValue {
     }
 }
 
+interface TokencardRange {
+    // CodeMirror document offsets
+    from: number
+    to: number
+
+    // Line/column position
+    range: UIRange
+}
+
+function tokencard(): Extension {
+    const [tokencardRange, , setTokencardRange] = createUpdateableField<TokencardRange | null>(null, field =>
+        hovercardRanges.computeN([field], state => {
+            const range = state.field(field)
+            return range ? [range] : []
+        })
+    )
+
+    return [
+        tokencardRange,
+        ViewPlugin.define(view => new FocusManager(view, setTokencardRange), {
+            decorations: plugin => plugin.decorations,
+        }),
+    ]
+}
+
 export const keyboardNavigation = Facet.define<
     BlobStencilFields['stencil'] | null,
     BlobStencilFields['stencil'][] | null
@@ -81,5 +155,5 @@ export const keyboardNavigation = Facet.define<
     static: true,
     // TODO better compare
     compareInput: (rangesA, rangesB) => rangesA?.length === rangesB?.length,
-    enables: ViewPlugin.fromClass(FocusManager, { decorations: plugin => plugin.decorations }),
+    enables: tokencard(),
 })

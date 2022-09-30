@@ -159,8 +159,8 @@ export const Blob: React.FunctionComponent<BlobProps> = props => {
                 initialSelection: position.line !== undefined ? position : null,
                 navigateToLineOnAnyClick: navigateToLineOnAnyClick ?? false,
             }),
-            syntaxHighlight.of(blobInfo),
             keyboardNavigation.of(blobInfo.stencil),
+            syntaxHighlight.of(blobInfo),
             pinnedRangeField.init(() => (hasPin ? position : null)),
             extensionsController !== null && !navigateToLineOnAnyClick
                 ? sourcegraphExtensions({
