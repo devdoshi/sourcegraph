@@ -37,6 +37,7 @@ class ButtonWidget extends WidgetType {
         const button = document.createElement('button')
         button.className = 'sourcegraph-document-focus'
         button.textContent = this.view.state.sliceDoc(this.from, this.to)
+
         button.addEventListener('click', () => {
             // TODO, sort out cleanup
             this.view.dom.addEventListener('keydown', event => {
@@ -85,19 +86,17 @@ class FocusManager implements PluginValue {
 
             // Determine the start and end lines of the current viewport
             const fromLine = view.state.doc.lineAt(from)
-            const toLine = view.state.doc.lineAt(to)
 
             const result = view.state.facet(keyboardNavigation)?.[0]
             if (result) {
                 const startLine = result.at(0)?.start.line
-                const endLine = result?.at(-1)?.end.line
                 // Cache current line object
                 let line = fromLine
 
-                if (startLine !== undefined && endLine !== undefined) {
+                if (startLine !== undefined) {
                     // Iterate over the rendered line (numbers) and get the
                     // corresponding occurrences from the highlighting table.
-                    for (let index = startLine; index < endLine; index++) {
+                    for (let index = startLine; index < result.length; index++) {
                         const { start, end } = result[index]
 
                         // Fetch new line information if necessary

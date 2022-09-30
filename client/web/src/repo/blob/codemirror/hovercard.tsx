@@ -58,7 +58,6 @@
  *  require {@link Hovercard} to update {@link activeRanges} as necessary to
  *  highlight the ranges for which hover information exists.
  */
-
 import { Extension, Facet, RangeSet, StateEffect, StateEffectType, StateField, Text } from '@codemirror/state'
 import {
     Decoration,
@@ -358,7 +357,6 @@ export const hovercardSource = Facet.define<HovercardSource, HovercardSource>({
 class HoverManager implements PluginValue {
     private nextOffset = new Subject<number | null>()
     private subscription: Subscription
-    private otherSubscription: Subscription
 
     constructor(
         private readonly view: EditorView,
@@ -406,7 +404,6 @@ class HoverManager implements PluginValue {
     public destroy(): void {
         this.view.dom.removeEventListener('mouseleave', this.mouseleave)
         this.subscription.unsubscribe()
-        this.otherSubscription.unsubscribe()
     }
 }
 
