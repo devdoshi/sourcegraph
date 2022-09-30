@@ -114,8 +114,8 @@ export interface ActionItemProps extends ActionItemAction, ActionItemComponentPr
     /** Override default tab index */
     tabIndex?: number
 
-    /** If the button should capture focus */
-    captureFocus?: boolean
+    /** If the button should be autofocused */
+    autoFocus?: boolean
 
     hideExternalLinkIcon?: boolean
 
@@ -270,7 +270,7 @@ export class ActionItem extends React.PureComponent<ActionItemProps, State, type
                 this.props.disabledWhen,
             tabIndex: this.props.tabIndex,
             ref: itemRef => {
-                if (this.props.captureFocus && itemRef) {
+                if (this.props.autoFocus && itemRef) {
                     itemRef.focus()
                 }
             },

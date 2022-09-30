@@ -31,7 +31,6 @@ class FocusManager implements PluginValue {
             if (result) {
                 const startLine = result.at(0)?.start.line
                 const endLine = result?.at(-1)?.end.line
-                console.log(startLine, endLine)
                 // Cache current line object
                 let line = fromLine
 
@@ -49,7 +48,14 @@ class FocusManager implements PluginValue {
                         const from = line.from + start.character
                         const to = view.state.doc.line(end.line + 1).from + end.character
 
+                        /**
+                         * TODO: Ideal solution here might be to replace some of the hovercard logic.
+                         * 1. Convert all of these decorations into <buttons>
+                         * 2. Add onClicks to these buttons that triggers similar to `setHovercardPosition`
+                         * 3. Add event listener 'ESC' that will remove all hovercard positions, and (if applicable) return focus to active button.
+                         */
                         const decoration = Decoration.mark({
+                            class: 'sourcegraph-document-focus',
                             attributes: {
                                 tabIndex: '0',
                                 role: 'button',

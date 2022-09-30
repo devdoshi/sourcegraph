@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useEffect, useState } from 'react'
+import React, { CSSProperties, useCallback, useState } from 'react'
 
 import { mdiClose } from '@mdi/js'
 import classNames from 'classnames'
@@ -130,8 +130,6 @@ export const HoverOverlay: React.FunctionComponent<React.PropsWithChildren<Hover
         useBrandedLogo,
     } = props
 
-    const [hidden, setHidden] = useState(false)
-
     useLogTelemetryEvent(props)
 
     const [copyLinkText, setCopyLinkText] = useState('Copy link')
@@ -142,25 +140,7 @@ export const HoverOverlay: React.FunctionComponent<React.PropsWithChildren<Hover
         pinOptions?.onCopyLinkButtonClick?.()
     }, [pinOptions])
 
-    useEffect(() => {
-        const handleHoverClose = (event: KeyboardEvent): void => {
-            // TODO: Work out why ESC moves focus to search bar
-            if (event.key === 'Backspace') {
-                setHidden(true)
-            }
-        }
-        document.addEventListener('keydown', handleHoverClose)
-
-        return () => {
-            document.removeEventListener('keydown', handleHoverClose)
-        }
-    }, [pinOptions])
-
     if (!hoverOrError && (!actionsOrError || isErrorLike(actionsOrError))) {
-        return null
-    }
-
-    if (hidden) {
         return null
     }
 
@@ -237,7 +217,7 @@ export const HoverOverlay: React.FunctionComponent<React.PropsWithChildren<Hover
                                             `test-tooltip-${sanitizeClass(action.action.title || 'untitled')}`,
                                             index !== 0 && 'ml-1'
                                         )}
-                                        captureFocus={index === 0}
+                                        autoFocus={index === 0}
                                         iconClassName={iconClassName}
                                         pressedClassName={actionItemPressedClassName}
                                         variant="actionItem"
