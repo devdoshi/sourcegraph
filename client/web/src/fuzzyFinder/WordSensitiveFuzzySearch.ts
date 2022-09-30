@@ -79,7 +79,7 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
                 indexedFileCount: indexer.indexedFileCount(),
                 totalFileCount: indexer.totalFileCount(),
                 partialFuzzy: indexer.complete(),
-                continue: () => new Promise(resolve => resolve(loop())),
+                continue: () => later().then(() => loop()),
             }
         }
         return loop()
@@ -467,4 +467,8 @@ class Indexer {
             bucketCount--
         }
     }
+}
+
+async function later(): Promise<void> {
+    return new Promise(resolve => setTimeout(() => resolve(), 0))
 }

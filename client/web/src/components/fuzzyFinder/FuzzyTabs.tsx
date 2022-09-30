@@ -1,0 +1,202 @@
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
+
+import * as H from 'history'
+
+import { Settings, SettingsCascadeOrError } from '@sourcegraph/shared/src/settings/settings'
+import { useSessionStorage } from '@sourcegraph/wildcard'
+
+import { SearchIndexing } from '../../fuzzyFinder/FuzzySearch'
+import { getExperimentalFeatures } from '../../util/get-experimental-features'
+import { parseBrowserRepoURL } from '../../util/url'
+
+import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
+import { newFuzzyFSM, FuzzyFSM } from './FuzzyFsm'
+import { filesFSM, useFilename } from './useFilename'
+
+enum TabState {
+    Hidden,
+    Disabled,
+    Enabled,
+    Active,
+}
+
+class Tab {
+    constructor(
+        public readonly title: string,
+        public readonly state: TabState,
+        public readonly fsm: FuzzyFSM | undefined = undefined
+    ) {}
+    public withFSM(fsm: FuzzyFSM): Tab {
+        return new Tab(this.title, this.state, fsm)
+    }
+    public withState(state: TabState.Active | TabState.Enabled): Tab | undefined {
+        switch (this.state) {
+            case TabState.Hidden:
+            case TabState.Disabled:
+                return undefined
+            default:
+                if (state === this.state) {
+                    return undefined
+                }
+                return new Tab(this.title, state, this.fsm)
+        }
+    }
+    public isVisible(): boolean {
+        return this.state !== TabState.Hidden
+    }
+}
+
+const defaultKinds: Tabs = {
+    all: new Tab('All', TabState.Enabled),
+    actions: new Tab('Actions', TabState.Enabled),
+    repos: new Tab('Repos', TabState.Enabled),
+    files: new Tab('Files', TabState.Enabled),
+    symbols: new Tab('Symbols', TabState.Enabled),
+    lines: new Tab('Lines', TabState.Enabled),
+}
+const hiddenKind: Tab = new Tab('Hidden', TabState.Hidden)
+
+export interface Tabs {
+    all: Tab
+    actions: Tab
+    repos: Tab
+    files: Tab
+    symbols: Tab
+    lines: Tab
+}
+
+export class FuzzyTabs {
+    constructor(
+        public readonly tabs: Tabs,
+        public readonly actions: FuzzyAction[],
+        public readonly query: string,
+        public readonly setQuery: Dispatch<SetStateAction<string>>
+    ) {}
+    public entries(): [keyof Tabs, Tab][] {
+        const result: [keyof Tabs, Tab][] = []
+        for (const key of Object.keys(this.tabs)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            const value = (this.tabs as any)[key as keyof Tab] as Tab
+            result.push([key as keyof Tabs, value])
+        }
+        return result
+    }
+    public withQuery(newQuery: string): FuzzyTabs {
+        return new FuzzyTabs(this.tabs, this.actions, newQuery, this.setQuery)
+    }
+    public withTabs(newTabs: Partial<Tabs>): FuzzyTabs {
+        return new FuzzyTabs({ ...this.tabs, ...newTabs }, this.actions, this.query, this.setQuery)
+    }
+    public all(): Tab[] {
+        return Object.values(this.tabs)
+        // return [this.tabs.all, this.tabs.actions, this.tabs.repos, this.tabs.files, this.tabs.lines]
+    }
+    public isAllHidden(): boolean {
+        return this.all().find(tab => tab.state !== TabState.Hidden) === undefined
+    }
+}
+
+export interface FuzzyTabsProps extends FuzzyActionProps {
+    settingsCascade: SettingsCascadeOrError<Settings>
+    isRepositoryRelatedPage: boolean
+    location: H.Location
+}
+
+const isIndexing = new Set<string>()
+
+function activeTab(query: string): keyof Tabs {
+    if (query.startsWith('/')) {
+        return 'files'
+    }
+    if (query.startsWith('#')) {
+        return 'symbols'
+    }
+    if (query.startsWith('>')) {
+        return 'actions'
+    }
+    return 'all'
+}
+
+export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
+    const { repoName = '', commitID = '', rawRevision = '' } = useMemo(
+        () => parseBrowserRepoURL(props.location.pathname + props.location.search + props.location.hash),
+        [props.location]
+    )
+
+    // NOTE: the query is cached in session storage to mimic the file pickers in
+    // IntelliJ (by default) and VS Code (when "Workbench > Quick Open >
+    // Preserve Input" is enabled).
+    const initialQuery = ''
+    const [query, setQuery] = useSessionStorage(`fuzzy-modal.query.${repoName}`, initialQuery)
+
+    const [tabs, setTabs] = useState<FuzzyTabs>(() => {
+        const actions = allFuzzyActions(props)
+        return new FuzzyTabs(
+            {
+                all: hiddenKind,
+                actions: fuzzyFinderActions
+                    ? defaultKinds.actions.withFSM(newFuzzyFSM(actions.map(action => action.title)))
+                    : hiddenKind,
+                repos: hiddenKind,
+                files: props.isRepositoryRelatedPage ? defaultKinds.files : hiddenKind,
+                symbols: hiddenKind,
+                lines: hiddenKind,
+            },
+            actions,
+            query,
+            setQuery
+        )
+    })
+
+    const active = activeTab(query)
+    useEffect(() => setTabs(tabs.withQuery(query)), [tabs, setTabs, query])
+    useEffect(() => {
+        const updatedTabs: Partial<Tabs> = {}
+        for (const [key, value] of tabs.entries()) {
+            const newValue = value.withState(active === key ? TabState.Active : TabState.Enabled)
+            if (newValue) {
+                updatedTabs[key] = newValue
+            }
+        }
+        if (Object.keys(updatedTabs).length > 0) {
+            setTabs(tabs.withTabs(updatedTabs))
+        }
+    }, [active, tabs, setTabs])
+
+    useEffect(() => {
+        for (const [key, value] of tabs.entries()) {
+            if (!isIndexing.has(key) && value.fsm?.key === 'indexing') {
+                isIndexing.add(value.title)
+                continueIndexing(value.fsm.indexing)
+                    .then(next => {
+                        const updatedTabs: Partial<Tabs> = {}
+                        updatedTabs[key] = value.withFSM(next)
+                        setTabs(tabs.withTabs(updatedTabs))
+                    })
+                    .catch(error => console.error(`failed to index fuzzy tab ${key}`, error))
+                    .finally(() => isIndexing.delete(value.title))
+            }
+        }
+    }, [tabs])
+
+    const filenameResult = useFilename(repoName, commitID || rawRevision)
+
+    useEffect(() => {
+        setTabs(tabs.withTabs({ files: tabs.tabs.files.withFSM(filesFSM(filenameResult)) }))
+    }, [filenameResult, tabs, setTabs])
+
+    const { fuzzyFinderActions } = getExperimentalFeatures(props.settingsCascade.final) ?? false
+
+    return tabs
+}
+
+async function continueIndexing(indexing: SearchIndexing): Promise<FuzzyFSM> {
+    const next = await indexing.continue()
+    if (next.key === 'indexing') {
+        return { key: 'indexing', indexing: next }
+    }
+    return {
+        key: 'ready',
+        fuzzy: next.value,
+    }
+}
