@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/regexp"
 	otlog "github.com/opentracing/opentracing-go/log"
-	traceLog "github.com/opentracing/opentracing-go/log"
 	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -256,7 +255,7 @@ func (s *Service) GetSupportedByCtags(ctx context.Context, filepath string, repo
 
 func (s *Service) SetRequestLanguageSupport(ctx context.Context, userID int, language string) (err error) {
 	ctx, _, endObservation := s.operations.setRequestLanguageSupport.With(ctx, &err, observation.Args{
-		LogFields: []traceLog.Field{traceLog.Int("userID", userID), traceLog.String("language", language)},
+		LogFields: []otlog.Field{otlog.Int("userID", userID), otlog.String("language", language)},
 	})
 	defer endObservation(1, observation.Args{})
 
@@ -265,7 +264,7 @@ func (s *Service) SetRequestLanguageSupport(ctx context.Context, userID int, lan
 
 func (s *Service) GetLanguagesRequestedBy(ctx context.Context, userID int) (_ []string, err error) {
 	ctx, _, endObservation := s.operations.getLanguagesRequestedBy.With(ctx, &err, observation.Args{
-		LogFields: []traceLog.Field{traceLog.Int("userID", userID)},
+		LogFields: []otlog.Field{otlog.Int("userID", userID)},
 	})
 	defer endObservation(1, observation.Args{})
 
@@ -274,7 +273,7 @@ func (s *Service) GetLanguagesRequestedBy(ctx context.Context, userID int) (_ []
 
 func (s *Service) GetListTags(ctx context.Context, repo api.RepoName, commitObjs ...string) (_ []*gitdomain.Tag, err error) {
 	ctx, _, endObservation := s.operations.getListTags.With(ctx, &err, observation.Args{
-		LogFields: []traceLog.Field{traceLog.String("repo", string(repo)), traceLog.String("commitObjs", fmt.Sprintf("%v", commitObjs))},
+		LogFields: []otlog.Field{otlog.String("repo", string(repo)), otlog.String("commitObjs", fmt.Sprintf("%v", commitObjs))},
 	})
 	defer endObservation(1, observation.Args{})
 
