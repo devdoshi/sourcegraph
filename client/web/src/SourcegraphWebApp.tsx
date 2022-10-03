@@ -33,6 +33,8 @@ import { NotificationType } from '@sourcegraph/shared/src/api/extension/extensio
 import { fetchHighlightedFileLineRanges } from '@sourcegraph/shared/src/backend/file'
 import { setCodeIntelSearchContext } from '@sourcegraph/shared/src/codeintel/legacy-extensions/api'
 import { Controller as ExtensionsController } from '@sourcegraph/shared/src/extensions/controller'
+import { createController as createExtensionsController } from '@sourcegraph/shared/src/extensions/createLazyLoadedController'
+import { createNoopController } from '@sourcegraph/shared/src/extensions/createNoopLoadedController'
 import { getModeFromPath } from '@sourcegraph/shared/src/languages'
 import { BrandedNotificationItemStyleProps } from '@sourcegraph/shared/src/notifications/NotificationItem'
 import { Notifications } from '@sourcegraph/shared/src/notifications/Notifications'
@@ -183,7 +185,9 @@ export class SourcegraphWebApp extends React.Component<
     private readonly subscriptions = new Subscription()
     private readonly userRepositoriesUpdates = new Subject<void>()
     private readonly platformContext: PlatformContext = createPlatformContext()
-    private readonly extensionsController: ExtensionsController | null = null
+    private readonly extensionsController: ExtensionsController | null = window.context.enableLegacyExtensions
+        ? createExtensionsController(this.platformContext)
+        : createNoopController(this.platformContext)
 
     constructor(props: SourcegraphWebAppProps) {
         super(props)
