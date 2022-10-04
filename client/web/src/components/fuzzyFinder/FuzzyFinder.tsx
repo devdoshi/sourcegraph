@@ -32,11 +32,11 @@ export const FuzzyFinderContainer: React.FunctionComponent<FuzzyFinderContainerP
     const fuzzyFinderShortcut = useKeyboardShortcut('fuzzyFinder')
     const tabs = useFuzzyTabs(props)
 
-    useEffect(() => {
-        if (isVisible) {
-            props.telemetryService.log('FuzzyFinderViewed', { action: 'shortcut open' })
-        }
-    }, [props.telemetryService, isVisible])
+    // useEffect(() => {
+    //     if (isVisible) {
+    //         props.telemetryService.log('FuzzyFinderViewed', { action: 'shortcut open' })
+    //     }
+    // }, [props.telemetryService, isVisible])
 
     if (tabs.isAllHidden()) {
         return null

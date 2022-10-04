@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 import { mdiClose } from '@mdi/js'
-import { useMemo } from '@storybook/addons'
 import classNames from 'classnames'
 
 import { pluralize } from '@sourcegraph/common'

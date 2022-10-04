@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
 
 import * as H from 'history'
+import useDeepCompareEffect from 'use-deep-compare-effect'
 
 import { Settings, SettingsCascadeOrError } from '@sourcegraph/shared/src/settings/settings'
 import { useSessionStorage } from '@sourcegraph/wildcard'
@@ -123,6 +124,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         [props.location]
     )
 
+    const { fuzzyFinderActions } = getExperimentalFeatures(props.settingsCascade.final) ?? false
+
     // NOTE: the query is cached in session storage to mimic the file pickers in
     // IntelliJ (by default) and VS Code (when "Workbench > Quick Open >
     // Preserve Input" is enabled).
@@ -149,7 +152,11 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     })
 
     const active = activeTab(query)
-    useEffect(() => setTabs(tabs.withQuery(query)), [tabs, setTabs, query])
+    useEffect(() => {
+        if (tabs.query !== query) {
+            setTabs(tabs.withQuery(query))
+        }
+    }, [tabs, query])
     useEffect(() => {
         const updatedTabs: Partial<Tabs> = {}
         for (const [key, value] of tabs.entries()) {
@@ -161,10 +168,11 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         if (Object.keys(updatedTabs).length > 0) {
             setTabs(tabs.withTabs(updatedTabs))
         }
-    }, [active, tabs, setTabs])
+    }, [active, tabs])
 
     useEffect(() => {
         for (const [key, value] of tabs.entries()) {
+            // TODO: move `isIndexing` into FSM
             if (!isIndexing.has(key) && value.fsm?.key === 'indexing') {
                 isIndexing.add(value.title)
                 continueIndexing(value.fsm.indexing)
@@ -173,6 +181,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
                         updatedTabs[key] = value.withFSM(next)
                         setTabs(tabs.withTabs(updatedTabs))
                     })
+                    // eslint-disable-next-line no-console
                     .catch(error => console.error(`failed to index fuzzy tab ${key}`, error))
                     .finally(() => isIndexing.delete(value.title))
             }
@@ -181,11 +190,9 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
 
     const filenameResult = useFilename(repoName, commitID || rawRevision)
 
-    useEffect(() => {
+    useDeepCompareEffect(() => {
         setTabs(tabs.withTabs({ files: tabs.tabs.files.withFSM(filesFSM(filenameResult)) }))
-    }, [filenameResult, tabs, setTabs])
-
-    const { fuzzyFinderActions } = getExperimentalFeatures(props.settingsCascade.final) ?? false
+    }, [filenameResult])
 
     return tabs
 }
