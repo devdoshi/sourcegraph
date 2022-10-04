@@ -243,8 +243,18 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 break
             case event.key === 'Tab':
                 event.preventDefault()
+                const target = event.target as HTMLInputElement
+                const oldValue = target.value
+                const oldStart = target.selectionStart
+                const oldEnd = target.selectionEnd
                 const newValue = props.tabs.focusTabWithIncrement(event.shiftKey ? -1 : 1)
-                ;(event.target as HTMLInputElement).value = newValue
+                const increment = newValue.length - oldValue.length
+                target.value = newValue
+                if (oldStart !== null && oldEnd !== null) {
+                    target.setSelectionRange(oldStart + increment, oldEnd + increment)
+                } else if (oldStart !== null) {
+                    target.setSelectionRange(oldStart + increment)
+                }
             default:
         }
     }
