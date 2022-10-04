@@ -1,6 +1,7 @@
 import { ApolloError, useQuery } from '@apollo/client'
 
 import { gql, getDocumentNode } from '@sourcegraph/http-client'
+import { createUrlFunction } from '../../fuzzyFinder/WordSensitiveFuzzySearch'
 
 import { FileNamesResult, FileNamesVariables } from '../../graphql-operations'
 
@@ -37,7 +38,7 @@ const FILE_NAMES = gql`
     }
 `
 
-export function filesFSM(result: FilenameResult): FuzzyFSM {
+export function filesFSM(result: FilenameResult, createUrl: createUrlFunction): FuzzyFSM {
     if (result.isLoadingFilename) {
         return {
             key: 'downloading',
@@ -49,5 +50,5 @@ export function filesFSM(result: FilenameResult): FuzzyFSM {
             errorMessage: JSON.stringify(result.filenameError),
         }
     }
-    return newFuzzyFSM(result.downloadFilename)
+    return newFuzzyFSM(result.downloadFilename, createUrl)
 }

@@ -10,8 +10,9 @@ import { getExperimentalFeatures } from '../../util/get-experimental-features'
 import { parseBrowserRepoURL } from '../../util/url'
 
 import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
-import { newFuzzyFSM, FuzzyFSM } from './FuzzyFsm'
+import { FuzzyFSM, newFuzzyFSMFromValues } from './FuzzyFsm'
 import { filesFSM, useFilename } from './useFilename'
+import { toPrettyBlobURL } from '@sourcegraph/shared/src/util/url'
 
 export enum FuzzyTabState {
     Hidden,
@@ -186,7 +187,12 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
             {
                 all: fuzzyFinderActions ? defaultKinds.all : hiddenKind,
                 actions: fuzzyFinderActions
-                    ? defaultKinds.actions.withFSM(newFuzzyFSM(actions.map(action => action.title)))
+                    ? defaultKinds.actions.withFSM(
+                          newFuzzyFSMFromValues(
+                              actions.map(action => ({ text: action.title, onClick: action.run })),
+                              undefined
+                          )
+                      )
                     : hiddenKind,
                 repos: hiddenKind,
                 files: props.isRepositoryRelatedPage ? defaultKinds.files : hiddenKind,
@@ -233,7 +239,16 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     useEffect(() => {
         setTabs(
             tabs.withQuery(queryRef.current).withTabs({
-                files: tabs.tabs.files.withFSM(filesFSM({ downloadFilename, filenameError, isLoadingFilename })),
+                files: tabs.tabs.files.withFSM(
+                    filesFSM({ downloadFilename, filenameError, isLoadingFilename }, filename =>
+                        toPrettyBlobURL({
+                            filePath: filename,
+                            revision: rawRevision,
+                            repoName: repoName,
+                            commitID: commitID,
+                        })
+                    )
+                ),
             })
         )
     }, [downloadFilename, filenameError, isLoadingFilename])

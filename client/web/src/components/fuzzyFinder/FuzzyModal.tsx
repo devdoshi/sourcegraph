@@ -253,7 +253,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 if (oldStart !== null && oldEnd !== null) {
                     target.setSelectionRange(oldStart + increment, oldEnd + increment)
                 } else if (oldStart !== null) {
-                    target.setSelectionRange(oldStart + increment)
+                    target.setSelectionRange(oldStart + increment, null)
                 }
             default:
         }

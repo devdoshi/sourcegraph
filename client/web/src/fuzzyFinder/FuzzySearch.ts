@@ -16,6 +16,7 @@ export interface FuzzySearchResult {
 
 export interface SearchValue {
     text: string
+    onClick?: () => void
 }
 
 export type IndexingFSM = SearchIndexing | SearchReady

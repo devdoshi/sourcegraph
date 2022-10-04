@@ -68,15 +68,19 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
         }
     }
 
-    public static fromSearchValuesAsync(files: SearchValue[], bucketSize: number = DEFAULT_BUCKET_SIZE): IndexingFSM {
+    public static fromSearchValuesAsync(
+        files: SearchValue[],
+        createUrl: createUrlFunction,
+        bucketSize: number = DEFAULT_BUCKET_SIZE
+    ): IndexingFSM {
         files.sort((a, b) => a.text.length - b.text.length)
-        const indexer = new Indexer(files, bucketSize)
+        const indexer = new Indexer(files, bucketSize, createUrl)
         function loop(): IndexingFSM {
             if (indexer.isDone()) {
                 return { key: 'ready', value: indexer.complete() }
             }
             indexer.processBuckets(DEFAULT_INDEXING_BUCKET_SIZE)
-            let indexingPromise: Promise<void> | undefined
+            let indexingPromise: Promise<IndexingFSM> | undefined
             return {
                 key: 'indexing',
                 indexedFileCount: indexer.indexedFileCount(),
@@ -96,9 +100,10 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
 
     public static fromSearchValues(
         files: SearchValue[],
+        createUrl: createUrlFunction,
         bucketSize: number = DEFAULT_BUCKET_SIZE
     ): WordSensitiveFuzzySearch {
-        const indexer = new Indexer(files, bucketSize)
+        const indexer = new Indexer(files, bucketSize, createUrl)
         while (!indexer.isDone()) {
             indexer.processBuckets(bucketSize)
         }
@@ -400,15 +405,18 @@ interface BucketResult {
     value: HighlightedLinkProps[]
 }
 
+export type createUrlFunction = undefined | ((value: string) => string)
+
 class Bucket {
     constructor(
         public readonly files: SearchValue[],
         public readonly filter: BloomFilter,
-        public readonly id: number
+        public readonly id: number,
+        public readonly createUrl: createUrlFunction
     ) {}
-    public static fromSearchValues(files: SearchValue[]): Bucket {
+    public static fromSearchValues(files: SearchValue[], createUrl: createUrlFunction): Bucket {
         files.sort((a, b) => a.text.length - b.text.length)
-        return new Bucket(files, populateBloomFilter(files), Math.random())
+        return new Bucket(files, populateBloomFilter(files), Math.random(), createUrl)
     }
 
     private matchesMaybe(hashParts: number[]): boolean {
@@ -428,11 +436,23 @@ class Bucket {
         for (const file of this.files) {
             const positions = fuzzyMatches(queryParts, file.text)
             if (positions.length > 0) {
+                const queryClick = query.onClick
+                let onClick = query.onClick
+                if (file.onClick) {
+                    const fileClick = file.onClick
+                    onClick = () => {
+                        fileClick()
+                        if (queryClick) {
+                            queryClick()
+                        }
+                    }
+                }
+
                 result.push({
                     text: file.text,
                     positions,
                     url: query.createUrl ? query.createUrl(file.text) : undefined,
-                    onClick: query.onClick,
+                    onClick,
                 })
             }
         }
@@ -444,7 +464,11 @@ class Indexer {
     private buffer: SearchValue[] = []
     private buckets: Bucket[] = []
     private index = 0
-    constructor(private readonly files: SearchValue[], private readonly bucketSize: number) {
+    constructor(
+        private readonly files: SearchValue[],
+        private readonly bucketSize: number,
+        private readonly createUrl: createUrlFunction
+    ) {
         this.files.sort((a, b) => a.text.length - b.text.length)
     }
 
@@ -470,7 +494,7 @@ class Indexer {
                 this.index++
             }
             if (this.buffer) {
-                this.buckets.push(Bucket.fromSearchValues(this.buffer))
+                this.buckets.push(Bucket.fromSearchValues(this.buffer, this.createUrl))
                 this.buffer = []
             }
             bucketCount--
