@@ -15,10 +15,17 @@ import (
 
 type cratesSyncerJob struct{}
 
-func NewCratesSyncerJob() job.Job { return &cratesSyncerJob{} }
+func NewCratesSyncerJob() job.Job {
+	return &cratesSyncerJob{}
+}
 
-func (j *cratesSyncerJob) Description() string  { return "" }
-func (j *cratesSyncerJob) Config() []env.Config { return nil }
+func (j *cratesSyncerJob) Description() string {
+	return ""
+}
+
+func (j *cratesSyncerJob) Config() []env.Config {
+	return nil
+}
 
 func (j *cratesSyncerJob) Routines(startupCtx context.Context, logger log.Logger) ([]goroutine.BackgroundRoutine, error) {
 	rawDB, err := workerdb.Init()
