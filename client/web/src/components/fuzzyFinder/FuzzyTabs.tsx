@@ -133,7 +133,6 @@ export class FuzzyTabs {
     }
     public all(): Tab[] {
         return Object.values(this.tabs).filter(tab => tab.isVisible())
-        // return [this.tabs.all, this.tabs.actions, this.tabs.repos, this.tabs.files, this.tabs.lines]
     }
     public isDownloading(): boolean {
         return this.all().find(tab => tab.fsm && tab.fsm.key === 'downloading') === undefined
