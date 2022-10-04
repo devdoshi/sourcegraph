@@ -15,6 +15,9 @@ const MAX_VALUE_LENGTH = 100
 // works fine and provides the fastest indexing time in large repositories like
 // Chromium.
 const DEFAULT_BLOOM_FILTER_HASH_FUNCTION_COUNT = 1
+
+// const DEFAULT_INDEXING_BUCKET_SIZE = 25_000
+const DEFAULT_INDEXING_BUCKET_SIZE = 1000
 // The number of filenames to group together in a single bucket, and the number
 // string prefixes that each bloom can contain.  Currently, every bucket can
 // contain up to 262.144 prefixes (conservatively large number).  With bucket
@@ -73,7 +76,7 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
             if (indexer.isDone()) {
                 return { key: 'ready', value: indexer.complete() }
             }
-            indexer.processBuckets(25000)
+            indexer.processBuckets(DEFAULT_INDEXING_BUCKET_SIZE)
             return {
                 key: 'indexing',
                 indexedFileCount: indexer.indexedFileCount(),
@@ -470,5 +473,5 @@ class Indexer {
 }
 
 async function later(): Promise<void> {
-    return new Promise(resolve => setTimeout(() => resolve(), 0))
+    return new Promise(resolve => setTimeout(() => resolve(), 2000))
 }

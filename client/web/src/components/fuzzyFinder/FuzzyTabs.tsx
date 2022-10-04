@@ -11,7 +11,7 @@ import { getExperimentalFeatures } from '../../util/get-experimental-features'
 import { parseBrowserRepoURL } from '../../util/url'
 
 import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
-import { newFuzzyFSM, FuzzyFSM } from './FuzzyFsm'
+import { newFuzzyFSM, FuzzyFSM, Indexing } from './FuzzyFsm'
 import { filesFSM, useFilename } from './useFilename'
 
 enum TabState {
@@ -91,6 +91,9 @@ export class FuzzyTabs {
     public all(): Tab[] {
         return Object.values(this.tabs)
         // return [this.tabs.all, this.tabs.actions, this.tabs.repos, this.tabs.files, this.tabs.lines]
+    }
+    public isDownloading(): boolean {
+        return this.all().find(tab => tab.fsm && tab.fsm.key === 'downloading') === undefined
     }
     public isAllHidden(): boolean {
         return this.all().find(tab => tab.state !== TabState.Hidden) === undefined
@@ -179,7 +182,10 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
                     .then(next => {
                         const updatedTabs: Partial<Tabs> = {}
                         updatedTabs[key] = value.withFSM(next)
-                        setTabs(tabs.withTabs(updatedTabs))
+                        if (query !== tabs.query) {
+                            console.log({ query, tabQuery: tabs.query })
+                        }
+                        setTabs(tabs.withQuery(query).withTabs(updatedTabs))
                     })
                     // eslint-disable-next-line no-console
                     .catch(error => console.error(`failed to index fuzzy tab ${key}`, error))

@@ -33,8 +33,6 @@ export interface FuzzyModalProps {
     initialMaxResults: number
     initialQuery: string
     onClose: () => void
-    fsm: FuzzyFSM
-    setFsm: (fsm: FuzzyFSM) => void
     tabs: FuzzyTabs
 }
 
@@ -156,9 +154,6 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
     const [maxResults, setMaxResults] = useState(props.initialMaxResults)
 
     const { resultsCount, isComplete, totalFileCount, fuzzyResultElement } = useMemo<QueryResult>(() => {
-        if (props.tabs.query === '') {
-            return emptyResults(<></>)
-        }
         let isDownloading = false
         const errors: string[] = []
         const searches: FuzzySearch[] = []
@@ -257,7 +252,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                     aria-autocomplete="list"
                     aria-controls={FUZZY_MODAL_RESULTS}
                     aria-owns={FUZZY_MODAL_RESULTS}
-                    aria-expanded={props.fsm.key !== 'downloading'}
+                    aria-expanded={props.tabs.isDownloading()}
                     aria-activedescendant={fuzzyResultId(focusIndex)}
                     id="fuzzy-modal-input"
                     className={styles.input}
@@ -270,7 +265,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 />
                 <div className={styles.summary}>
                     <FuzzyResultsSummary
-                        fsm={props.fsm}
+                        tabs={props.tabs}
                         resultsCount={resultsCount}
                         isComplete={isComplete}
                         totalFileCount={totalFileCount}
@@ -295,21 +290,21 @@ function plural(what: string, count: number, isComplete: boolean): string {
     return `${count.toLocaleString()}${isComplete ? '' : '+'} ${pluralize(what, count)}`
 }
 interface FuzzyResultsSummaryProps {
-    fsm: FuzzyFSM
+    tabs: FuzzyTabs
     resultsCount: number
     isComplete: boolean
     totalFileCount: number
 }
 
 const FuzzyResultsSummary: React.FunctionComponent<React.PropsWithChildren<FuzzyResultsSummaryProps>> = ({
-    fsm,
+    tabs,
     resultsCount,
     isComplete,
     totalFileCount,
 }) => (
     <>
         <span className={styles.resultCount}>
-            {plural('result', resultsCount, isComplete)} - {fsm.key === 'indexing' && indexingProgressBar(fsm)}{' '}
+            {plural('result', resultsCount, isComplete)} - {indexingProgressBar(tabs)}{' '}
             {plural('total file', totalFileCount, true)}
         </span>
         <i className="text-muted">
@@ -318,9 +313,21 @@ const FuzzyResultsSummary: React.FunctionComponent<React.PropsWithChildren<Fuzzy
     </>
 )
 
-function indexingProgressBar(indexing: Indexing): JSX.Element {
-    const indexedFiles = indexing.indexing.indexedFileCount
-    const totalFiles = indexing.indexing.totalFileCount
+function indexingProgressBar(tabs: FuzzyTabs): JSX.Element {
+    let indexedFiles = 0
+    let totalFiles = 0
+    for (const [, tab] of tabs.entries()) {
+        if (!tab.fsm) {
+            continue
+        }
+        if (tab.fsm.key === 'indexing') {
+            indexedFiles += tab.fsm.indexing.indexedFileCount
+            totalFiles += tab.fsm.indexing.totalFileCount
+        }
+    }
+    if (indexedFiles === 0 && totalFiles === 0) {
+        return <></>
+    }
     const percentage = Math.round((indexedFiles / totalFiles) * 100)
     return (
         <progress value={indexedFiles} max={totalFiles}>
