@@ -216,7 +216,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
     // Keep `tabs` in-sync with `query`
     useEffect(() => {
         if (tabs.query !== query) {
-            setTabs(tabs.withQuery(queryRef.current))
+            console.log({ newTabs: tabs.withQuery(query) })
+            setTabs(tabs.withQuery(query))
         }
     }, [query])
 

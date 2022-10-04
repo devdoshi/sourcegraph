@@ -79,7 +79,7 @@ function renderFiles(
     const links = filesResult.links
     if (links.length === 0) {
         return {
-            fuzzyResultElement: <Text>No files matching '{query}'</Text>,
+            fuzzyResultElement: <Text>No matches for '{query}'</Text>,
             resultsCount: 0,
             totalFileCount: search.totalFileCount,
             isComplete: filesResult.isComplete,
