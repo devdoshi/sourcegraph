@@ -7,10 +7,21 @@ import { FuzzyFinderRepoResult, FuzzyFinderRepoVariables } from '../../graphql-o
 export class Repositories {
     public queries: Map<string, Promise<string[]>> = new Map()
     public doneQueries: Set<string> = new Set()
+    public repositoryNames: Set<string> = new Set()
     constructor(
-        public readonly repositoryNames: string[],
+        public readonly initialRepositoryNames: string[],
         public readonly setRepositoryNames: (newNames: string[]) => void
-    ) {}
+    ) {
+        for (const name of initialRepositoryNames) {
+            this.repositoryNames.add(name)
+        }
+    }
+    private addRepositoryNames(names: string[]): void {
+        this.setRepositoryNames(names)
+        for (const name of names) {
+            this.repositoryNames.add(name)
+        }
+    }
     public isDoneDownloading(): boolean {
         return this.queries.size === 0
     }
@@ -19,7 +30,7 @@ export class Repositories {
     }
     public fuzzySearch(): FuzzySearch {
         return new CaseInsensitiveFuzzySearch(
-            this.repositoryNames.map(name => ({ text: name })),
+            [...this.repositoryNames].map(name => ({ text: name })),
             name => `/${name}`
         )
     }
@@ -28,8 +39,8 @@ export class Repositories {
         return {
             key: 'indexing',
             partialFuzzy: this.fuzzySearch(),
-            indexedFileCount: this.repositoryNames.length,
-            totalFileCount: this.repositoryNames.length * 2,
+            indexedFileCount: this.repositoryNames.size,
+            totalFileCount: this.repositoryNames.size * 2,
             isIndexing: () => indexingPromise !== undefined,
             continueIndexing: () => {
                 if (!indexingPromise) {
@@ -58,8 +69,7 @@ export class Repositories {
         ).toPromise()
 
         const names = response.data?.search?.results?.repositories?.map(({ name }) => name) || []
-        this.setRepositoryNames(names)
-        this.repositoryNames.push(...names)
+        this.addRepositoryNames(names)
     }
     public addQuery(query: string, promise: Promise<string[]>): boolean {
         this.queries.set(query, promise)
