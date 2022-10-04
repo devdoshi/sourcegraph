@@ -1,3 +1,4 @@
+import { MutableRefObject } from 'react'
 import { ThemePreference, ThemeState } from '../../theme'
 
 export class FuzzyAction {
@@ -5,17 +6,17 @@ export class FuzzyAction {
 }
 
 export interface FuzzyActionProps {
-    themeState: ThemeState
+    themeState: MutableRefObject<ThemeState>
 }
 export function allFuzzyActions(props: FuzzyActionProps): FuzzyAction[] {
     return [
         new FuzzyAction('toggle.theme', 'Toggle Between Dark/Light Theme', () => {
-            switch (props.themeState.themePreference) {
+            const themeState = props.themeState.current
+            switch (themeState.enhancedThemePreference) {
                 case ThemePreference.Dark:
-                    return props.themeState.setThemePreference(ThemePreference.Light)
+                    return themeState.setThemePreference(ThemePreference.Light)
                 case ThemePreference.Light:
-                    return props.themeState.setThemePreference(ThemePreference.Dark)
-                case ThemePreference.System:
+                    return themeState.setThemePreference(ThemePreference.Dark)
             }
         }),
     ]

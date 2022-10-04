@@ -83,7 +83,8 @@ export class FuzzyTabs {
         public readonly tabs: Tabs,
         public readonly actions: FuzzyAction[],
         public readonly query: string,
-        public readonly setQuery: Dispatch<SetStateAction<string>>
+        public readonly setQuery: Dispatch<SetStateAction<string>>,
+        public readonly onClickItem: () => void
     ) {}
     public trimmedQuery(): string {
         for (const [, character] of Object.entries(tabCharacters)) {
@@ -121,10 +122,16 @@ export class FuzzyTabs {
         return state === FuzzyTabState.Active || this.tabs.all.state == FuzzyTabState.Active
     }
     public withQuery(newQuery: string): FuzzyTabs {
-        return new FuzzyTabs({ ...this.tabs, ...updatedTabs(this, newQuery) }, this.actions, newQuery, this.setQuery)
+        return new FuzzyTabs(
+            { ...this.tabs, ...updatedTabs(this, newQuery) },
+            this.actions,
+            newQuery,
+            this.setQuery,
+            this.onClickItem
+        )
     }
     public withTabs(newTabs: Partial<Tabs>): FuzzyTabs {
-        return new FuzzyTabs({ ...this.tabs, ...newTabs }, this.actions, this.query, this.setQuery)
+        return new FuzzyTabs({ ...this.tabs, ...newTabs }, this.actions, this.query, this.setQuery, this.onClickItem)
     }
     public all(): Tab[] {
         return Object.values(this.tabs)
@@ -165,7 +172,7 @@ function activeTab(query: string): keyof Tabs {
     return 'all'
 }
 
-export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
+export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): FuzzyTabs {
     const { repoName = '', commitID = '', rawRevision = '' } = useMemo(
         () => parseBrowserRepoURL(props.location.pathname + props.location.search + props.location.hash),
         [props.location]
@@ -201,7 +208,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
             },
             actions,
             '',
-            setQuery
+            setQuery,
+            onClickItem
         ).withQuery(query)
     })
     const tabsRef = useRef(tabs)

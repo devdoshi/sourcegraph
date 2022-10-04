@@ -3,8 +3,6 @@ import { HighlightedLinkProps } from '../components/fuzzyFinder/HighlightedLink'
 export interface FuzzySearchParameters {
     query: string
     maxResults: number
-    createUrl?: (value: string) => string
-    onClick?: () => void
 }
 
 export interface FuzzySearchResult {

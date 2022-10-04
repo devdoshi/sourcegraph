@@ -3,6 +3,7 @@ import * as fzy from 'fzy.js'
 import { HighlightedLinkProps, RangePosition } from '../components/fuzzyFinder/HighlightedLink'
 
 import { FuzzySearch, FuzzySearchParameters, FuzzySearchResult, SearchValue } from './FuzzySearch'
+import { createUrlFunction } from './WordSensitiveFuzzySearch'
 
 interface ScoredSearchValue extends SearchValue {
     score: number
@@ -35,7 +36,7 @@ export class CaseInsensitiveFuzzySearch extends FuzzySearch {
     private cacheCandidates: CacheCandidate[] = []
     private spaceSeparator = new RegExp('\\s+')
 
-    constructor(public readonly values: SearchValue[]) {
+    constructor(public readonly values: SearchValue[], private readonly createUrl: createUrlFunction) {
         super()
         this.totalFileCount = values.length
     }
@@ -48,7 +49,7 @@ export class CaseInsensitiveFuzzySearch extends FuzzySearch {
         const queryParts = parameters.query.split(this.spaceSeparator).filter(part => part.length > 0)
         if (queryParts.length === 0) {
             // Empty query, match all values
-            candidates.push(...searchValues.map(value => ({ score: 0, text: value.text })))
+            candidates.push(...searchValues.map(value => ({ score: 0, text: value.text, onClick: value.onClick })))
         } else {
             for (const value of searchValues) {
                 let score = 0
@@ -65,6 +66,7 @@ export class CaseInsensitiveFuzzySearch extends FuzzySearch {
                     candidates.push({
                         score,
                         text: value.text,
+                        onClick: value.onClick,
                     })
                 }
             }
@@ -84,11 +86,14 @@ export class CaseInsensitiveFuzzySearch extends FuzzySearch {
                 }
             }
             const positions = compressedRangePositions([...offsets])
+            if (candidate.onClick) {
+                console.log({ candidate })
+            }
             return {
                 positions,
                 text: candidate.text,
-                onClick: parameters.onClick,
-                url: parameters.createUrl?.(candidate.text),
+                onClick: candidate.onClick,
+                url: this.createUrl?.(candidate.text),
             }
         })
         return {

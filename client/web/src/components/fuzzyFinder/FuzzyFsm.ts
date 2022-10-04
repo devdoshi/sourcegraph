@@ -59,7 +59,7 @@ export function newFuzzyFSMFromValues(values: SearchValue[], createUrl: createUr
     if (values.length < DEFAULT_CASE_INSENSITIVE_FILE_COUNT_THRESHOLD) {
         return {
             key: 'ready',
-            fuzzy: new CaseInsensitiveFuzzySearch(values),
+            fuzzy: new CaseInsensitiveFuzzySearch(values, createUrl),
         }
     }
     const indexing = WordSensitiveFuzzySearch.fromSearchValuesAsync(values, createUrl)

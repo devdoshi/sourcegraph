@@ -164,8 +164,7 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
                 result.push({
                     text: value.text,
                     positions: [],
-                    url: query.createUrl ? query.createUrl(value.text) : undefined,
-                    onClick: query.onClick,
+                    url: bucket.createUrl?.(value.text),
                 })
                 if (result.length > query.maxResults) {
                     return complete(false)
@@ -406,6 +405,19 @@ interface BucketResult {
 }
 
 export type createUrlFunction = undefined | ((value: string) => string)
+export function mergedHandler(
+    firstHandler: undefined | (() => void),
+    secondHandler: undefined | (() => void)
+): undefined | (() => void) {
+    // TODO: avoid this weird merging logic
+    if (firstHandler && secondHandler) {
+        return () => {
+            firstHandler()
+            secondHandler()
+        }
+    }
+    return firstHandler ? firstHandler : secondHandler
+}
 
 class Bucket {
     constructor(
@@ -427,7 +439,7 @@ class Bucket {
         }
         return true
     }
-    public matches(query: FuzzySearchParameters, queryParts: string[], hashParts: number[]): BucketResult {
+    public matches(parameters: FuzzySearchParameters, queryParts: string[], hashParts: number[]): BucketResult {
         const matchesMaybe = this.matchesMaybe(hashParts)
         if (!matchesMaybe) {
             return { skipped: true, value: [] }
@@ -436,23 +448,11 @@ class Bucket {
         for (const file of this.files) {
             const positions = fuzzyMatches(queryParts, file.text)
             if (positions.length > 0) {
-                const queryClick = query.onClick
-                let onClick = query.onClick
-                if (file.onClick) {
-                    const fileClick = file.onClick
-                    onClick = () => {
-                        fileClick()
-                        if (queryClick) {
-                            queryClick()
-                        }
-                    }
-                }
-
                 result.push({
                     text: file.text,
                     positions,
-                    url: query.createUrl ? query.createUrl(file.text) : undefined,
-                    onClick,
+                    url: this.createUrl?.(file.text),
+                    onClick: file.onClick,
                 })
             }
         }

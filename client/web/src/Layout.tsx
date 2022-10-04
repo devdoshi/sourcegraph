@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useState } from 'react'
+import React, { Suspense, useCallback, useRef, useState } from 'react'
 
 import classNames from 'classnames'
 import { Redirect, Route, RouteComponentProps, Switch, matchPath } from 'react-router'
@@ -155,6 +155,8 @@ export const Layout: React.FunctionComponent<React.PropsWithChildren<LayoutProps
 
     const themeProps = useThemeProps()
     const themeState = useTheme()
+    const themeStateRef = useRef(themeState)
+    themeStateRef.current = themeState
     const [enableContrastCompliantSyntaxHighlighting] = useFeatureFlag('contrast-compliant-syntax-highlighting')
 
     const breadcrumbProps = useBreadcrumbs()
@@ -288,7 +290,7 @@ export const Layout: React.FunctionComponent<React.PropsWithChildren<LayoutProps
             )}
             {fuzzyFinder && (
                 <FuzzyFinderContainer
-                    themeState={themeState}
+                    themeState={themeStateRef}
                     isRepositoryRelatedPage={isRepositoryRelatedPage}
                     settingsCascade={props.settingsCascade}
                     telemetryService={props.telemetryService}

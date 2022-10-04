@@ -4,7 +4,6 @@ import { mdiClose } from '@mdi/js'
 import classNames from 'classnames'
 
 import { pluralize } from '@sourcegraph/common'
-import { toPrettyBlobURL } from '@sourcegraph/shared/src/util/url'
 import { Button, Modal, Icon, H3, Text, Input, useSessionStorage } from '@sourcegraph/wildcard'
 
 import { AggregateFuzzySearch } from '../../fuzzyFinder/AggregateFuzzySearch'
@@ -12,9 +11,10 @@ import { FuzzySearch, FuzzySearchResult } from '../../fuzzyFinder/FuzzySearch'
 import { parseBrowserRepoURL } from '../../util/url'
 
 import { FuzzyTabs, FuzzyTabState } from './FuzzyTabs'
-import { HighlightedLink } from './HighlightedLink'
+import { HighlightedLink, linkStyle } from './HighlightedLink'
 
 import styles from './FuzzyModal.module.scss'
+import { mergedHandler } from '../../fuzzyFinder/WordSensitiveFuzzySearch'
 
 const FUZZY_MODAL_RESULTS = 'fuzzy-modal-results'
 
@@ -54,10 +54,7 @@ interface QueryResult {
 function renderFiles(
     focusIndex: number,
     maxResults: number,
-    repoName: string,
-    commitID: string,
     tabs: FuzzyTabs,
-    onClose: () => void,
     search: FuzzySearch,
     indexingFileCount: number
 ): QueryResult {
@@ -74,14 +71,6 @@ function renderFiles(
         filesResult = search.search({
             query,
             maxResults,
-            createUrl: filename =>
-                toPrettyBlobURL({
-                    filePath: filename,
-                    revision: repoUrl.revision,
-                    repoName: repoName,
-                    commitID: commitID,
-                }),
-            onClick: () => onClose(),
         })
         filesResult.elapsedMilliseconds = window.performance.now() - start
         lastFuzzySearchResult.clear() // Only cache the last query.
@@ -108,7 +97,7 @@ function renderFiles(
                     aria-selected={fileIndex === focusIndex}
                     className={classNames('p-1', fileIndex === focusIndex && styles.focused)}
                 >
-                    <HighlightedLink {...file} />
+                    <HighlightedLink {...file} onClick={mergedHandler(file.onClick, tabs.onClickItem)} />
                 </li>
             ))}
         </ul>
@@ -189,17 +178,8 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
             return emptyResults(<Text>Downloading</Text>)
         }
         const search = new AggregateFuzzySearch(searches)
-        return renderFiles(
-            focusIndex,
-            maxResults,
-            props.repoName,
-            props.commitID,
-            props.tabs,
-            props.onClose,
-            search,
-            indexingFileCount
-        )
-    }, [focusIndex, maxResults, props.repoName, props.commitID, props.tabs, props.onClose])
+        return renderFiles(focusIndex, maxResults, props.tabs, search, indexingFileCount)
+    }, [focusIndex, maxResults, props.tabs])
 
     // Sets the new "focus index" so that it's rounded by the number of
     // displayed filenames.  Cycles so that the user can press-hold the down
@@ -236,9 +216,12 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 break
             case event.key === 'Enter':
                 if (focusIndex < resultsCount) {
-                    const fileAnchor = document.querySelector<HTMLAnchorElement>(`#fuzzy-modal-result-${focusIndex} a`)
-                    fileAnchor?.click()
-                    props.onClose()
+                    const fileAnchor = document.querySelector(`#fuzzy-modal-result-${focusIndex} .${linkStyle}`)
+                    console.log(fileAnchor)
+                    if (fileAnchor !== null && 'click' in fileAnchor) {
+                        ;(fileAnchor as any).click()
+                    }
+                    // props.onClose()
                 }
                 break
             case event.key === 'Tab':

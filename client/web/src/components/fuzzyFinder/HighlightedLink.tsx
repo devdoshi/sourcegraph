@@ -2,7 +2,7 @@ import React from 'react'
 
 import classNames from 'classnames'
 
-import { Link, Code } from '@sourcegraph/wildcard'
+import { Link, Code, Button } from '@sourcegraph/wildcard'
 
 import styles from './HighlightedLink.module.scss'
 
@@ -76,11 +76,15 @@ export const HighlightedLink: React.FunctionComponent<React.PropsWithChildren<Hi
 
     return props.url ? (
         <Code>
-            <Link tabIndex={-1} className={styles.link} to={props.url} onClick={() => props.onClick?.()}>
+            <Link tabIndex={-1} className={styles.link} to={props.url} onClick={props.onClick}>
                 {spans}
             </Link>
         </Code>
     ) : (
-        <>{spans}</>
+        <div role="link" tabIndex={0} className={styles.link} onClick={props.onClick}>
+            {spans}
+        </div>
     )
 }
+
+export const linkStyle = styles.link

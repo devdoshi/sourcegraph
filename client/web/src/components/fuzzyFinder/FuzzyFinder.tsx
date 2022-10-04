@@ -10,7 +10,6 @@ import { TelemetryProps } from '@sourcegraph/shared/src/telemetry/telemetryServi
 
 import { parseBrowserRepoURL } from '../../util/url'
 
-import { FuzzyFSM } from './FuzzyFsm'
 import { FuzzyModal, FuzzyModalProps } from './FuzzyModal'
 import { FuzzyTabsProps, useFuzzyTabs } from './FuzzyTabs'
 
@@ -30,7 +29,7 @@ export const FuzzyFinderContainer: React.FunctionComponent<FuzzyFinderContainerP
     const [isVisible, setIsVisible] = useState(false)
     const [retainFuzzyFinderCache, setRetainFuzzyFinderCache] = useState(true)
     const fuzzyFinderShortcut = useKeyboardShortcut('fuzzyFinder')
-    const tabs = useFuzzyTabs(props)
+    const tabs = useFuzzyTabs(props, () => setIsVisible(false))
 
     // useEffect(() => {
     //     if (isVisible) {
@@ -98,9 +97,6 @@ const FuzzyFinder: React.FunctionComponent<React.PropsWithChildren<FuzzyFinderPr
     isVisible,
     tabs,
 }) => {
-    // The state machine of the fuzzy finder. See `FuzzyFSM` for more details
-    // about the state transititions.
-    const [fsm, setFsm] = useState<FuzzyFSM>({ key: 'empty' })
     const { repoName = '', commitID = '', rawRevision = '' } = parseBrowserRepoURL(pathname + search + hash)
 
     const history = useHistory()
@@ -128,8 +124,6 @@ const FuzzyFinder: React.FunctionComponent<React.PropsWithChildren<FuzzyFinderPr
             initialMaxResults={DEFAULT_MAX_RESULTS}
             initialQuery=""
             onClose={() => setIsVisible(false)}
-            fsm={fsm}
-            setFsm={setFsm}
         />
     )
 }

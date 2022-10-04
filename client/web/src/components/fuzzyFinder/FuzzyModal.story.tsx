@@ -3,8 +3,8 @@ import { DecoratorFn, Story, Meta } from '@storybook/react'
 import { CaseInsensitiveFuzzySearch } from '../../fuzzyFinder/CaseInsensitiveFuzzySearch'
 import { SearchValue } from '../../fuzzyFinder/FuzzySearch'
 import { WebStory } from '../WebStory'
+import { Ready } from './FuzzyFsm'
 
-import { Ready } from './FuzzyFinder'
 import { FuzzyModal } from './FuzzyModal'
 
 const filenames = [
@@ -25,7 +25,7 @@ const filenames = [
     'client/branded/src/components/LoaderInput.story.tsx',
 ]
 const searchValues: SearchValue[] = filenames.map(filename => ({ text: filename }))
-const fuzzy = new CaseInsensitiveFuzzySearch(searchValues)
+const fuzzy = new CaseInsensitiveFuzzySearch(searchValues, undefined)
 const fsm: Ready = { key: 'ready', fuzzy }
 const defaultProps = {
     repoName: 'repoName',
