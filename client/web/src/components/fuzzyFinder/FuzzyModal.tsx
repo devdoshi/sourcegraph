@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, KeyboardEvent } from 'react'
 
 import { mdiClose } from '@mdi/js'
 import classNames from 'classnames'
@@ -54,17 +54,20 @@ interface QueryResult {
 function renderFiles(
     focusIndex: number,
     maxResults: number,
-    props: FuzzyModalProps,
+    repoName: string,
+    commitID: string,
+    tabs: FuzzyTabs,
+    onClose: () => void,
     search: FuzzySearch,
     indexingFileCount: number
 ): QueryResult {
-    const query = props.tabs.trimmedQuery()
+    const query = tabs.trimmedQuery()
     // Parse the URL here instead of accepting it as a React prop because the
     // URL can change based on shortcuts like `y` that won't trigger a re-render
     // in React. By parsing the URL here, we avoid the risk of rendering links to a revision that
     // doesn't match the active revision in the browser's address bar.
     const repoUrl = parseBrowserRepoURL(location.pathname + location.search + location.hash)
-    const cacheKey = `${query}-${maxResults}${indexingFileCount}-${repoUrl.revision || ''}`
+    const cacheKey = `${tabs.query}-${maxResults}${indexingFileCount}-${repoUrl.revision || ''}`
     let filesResult = lastFuzzySearchResult.get(cacheKey)
     if (!filesResult) {
         const start = window.performance.now()
@@ -75,10 +78,10 @@ function renderFiles(
                 toPrettyBlobURL({
                     filePath: filename,
                     revision: repoUrl.revision,
-                    repoName: props.repoName,
-                    commitID: props.commitID,
+                    repoName: repoName,
+                    commitID: commitID,
                 }),
-            onClick: () => props.onClose(),
+            onClick: () => onClose(),
         })
         filesResult.elapsedMilliseconds = window.performance.now() - start
         lastFuzzySearchResult.clear() // Only cache the last query.
@@ -157,8 +160,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         const errors: string[] = []
         const searches: FuzzySearch[] = []
         let indexingFileCount = 0
-        for (const [key, tab] of props.tabs.entries()) {
-            console.log({ key, isActive: props.tabs.isActive(tab.state) })
+        for (const [, tab] of props.tabs.entries()) {
             if (!props.tabs.isActive(tab.state)) {
                 continue
             }
@@ -187,8 +189,17 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
             return emptyResults(<Text>Downloading</Text>)
         }
         const search = new AggregateFuzzySearch(searches)
-        return renderFiles(focusIndex, maxResults, props, search, indexingFileCount)
-    }, [focusIndex, maxResults, props])
+        return renderFiles(
+            focusIndex,
+            maxResults,
+            props.repoName,
+            props.commitID,
+            props.tabs,
+            props.onClose,
+            search,
+            indexingFileCount
+        )
+    }, [focusIndex, maxResults, props.repoName, props.commitID, props.tabs, props.onClose])
 
     // Sets the new "focus index" so that it's rounded by the number of
     // displayed filenames.  Cycles so that the user can press-hold the down
@@ -201,7 +212,10 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         document.querySelector(`#fuzzy-modal-result-${nextIndex}`)?.scrollIntoView(false)
     }
 
-    function onInputKeyDown(event: React.KeyboardEvent): void {
+    function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+        // console.log({ start: e.target.selectionStart, end: e.target.selectionEnd })
+    }
+    function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
         switch (true) {
             case event.key === 'Escape':
                 props.onClose()
@@ -227,6 +241,10 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                     props.onClose()
                 }
                 break
+            case event.key === 'Tab':
+                event.preventDefault()
+                const newValue = props.tabs.focusTabWithIncrement(event.shiftKey ? -1 : 1)
+                ;(event.target as HTMLInputElement).value = newValue
             default:
         }
     }
@@ -268,10 +286,21 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                     className={styles.input}
                     placeholder="Enter a partial file path or name"
                     defaultValue={props.tabs.query}
-                    onChange={({ target: { value } }) => {
-                        props.tabs.setQuery(value)
+                    onChange={event => {
+                        handleChange(event)
+                        props.tabs.setQuery(event.target.value)
                     }}
                     onKeyDown={onInputKeyDown}
+                    onMouseUp={event => {
+                        if ('selectionStart' in event.target) {
+                            // console.log({ selectionStart: (event.target as any).selectionStart })
+                        }
+                    }}
+                    onKeyUp={event => {
+                        if ('selectionStart' in event.target) {
+                            // console.log({ selectionStart: (event.target as any).selectionStart })
+                        }
+                    }}
                 />
                 <div className={styles.summary}>
                     <FuzzyResultsSummary

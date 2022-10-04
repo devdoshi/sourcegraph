@@ -1,7 +1,6 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 
 import * as H from 'history'
-import useDeepCompareEffect from 'use-deep-compare-effect'
 
 import { Settings, SettingsCascadeOrError } from '@sourcegraph/shared/src/settings/settings'
 import { useSessionStorage } from '@sourcegraph/wildcard'
@@ -11,7 +10,7 @@ import { getExperimentalFeatures } from '../../util/get-experimental-features'
 import { parseBrowserRepoURL } from '../../util/url'
 
 import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
-import { newFuzzyFSM, FuzzyFSM, Indexing } from './FuzzyFsm'
+import { newFuzzyFSM, FuzzyFSM } from './FuzzyFsm'
 import { filesFSM, useFilename } from './useFilename'
 
 export enum FuzzyTabState {
@@ -19,6 +18,15 @@ export enum FuzzyTabState {
     Disabled,
     Enabled,
     Active,
+}
+
+const tabCharacters: Record<keyof Tabs, string> = {
+    all: '',
+    files: '/',
+    actions: '>',
+    symbols: '#',
+    lines: '*',
+    repos: '%',
 }
 
 class Tab {
@@ -41,6 +49,9 @@ class Tab {
                 }
                 return new Tab(this.title, state, this.fsm)
         }
+    }
+    public isActive(): boolean {
+        return this.state === FuzzyTabState.Active
     }
     public isVisible(): boolean {
         return this.state !== FuzzyTabState.Hidden
@@ -74,23 +85,34 @@ export class FuzzyTabs {
         public readonly setQuery: Dispatch<SetStateAction<string>>
     ) {}
     public trimmedQuery(): string {
-        if (this.query.startsWith('/')) {
-            return this.query.replace(/^\/ */, '')
-        }
-        if (this.query.startsWith('#')) {
-            return this.query.replace(/^# */, '')
-        }
-        if (this.query.startsWith('>')) {
-            return this.query.replace(/^> */, '')
+        for (const [, character] of Object.entries(tabCharacters)) {
+            if (character.length > 0 && this.query.startsWith(character)) {
+                return this.query.slice(1)
+            }
         }
         return this.query
+    }
+    public focusTabWithIncrement(increment: number): string {
+        const activeIndex = this.entries().findIndex(([, tab]) => tab.isActive())
+        console.log({ increment, activeIndex })
+        const nextIndex = activeIndex + increment
+        return this.focusTab(nextIndex)
+    }
+    public focusTab(index: number): string {
+        console.log({ index })
+        const [key] = this.entries().slice(index % this.entries().length)[0]
+        const newQuery = tabCharacters[key] + this.trimmedQuery()
+        this.setQuery(newQuery)
+        return newQuery
     }
     public entries(): [keyof Tabs, Tab][] {
         const result: [keyof Tabs, Tab][] = []
         for (const key of Object.keys(this.tabs)) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
             const value = (this.tabs as any)[key as keyof Tab] as Tab
-            result.push([key as keyof Tabs, value])
+            if (value.isVisible()) {
+                result.push([key as keyof Tabs, value])
+            }
         }
         return result
     }
@@ -98,7 +120,7 @@ export class FuzzyTabs {
         return state === FuzzyTabState.Active || this.tabs.all.state == FuzzyTabState.Active
     }
     public withQuery(newQuery: string): FuzzyTabs {
-        return new FuzzyTabs(this.tabs, this.actions, newQuery, this.setQuery)
+        return new FuzzyTabs({ ...this.tabs, ...updatedTabs(this, newQuery) }, this.actions, newQuery, this.setQuery)
     }
     public withTabs(newTabs: Partial<Tabs>): FuzzyTabs {
         return new FuzzyTabs({ ...this.tabs, ...newTabs }, this.actions, this.query, this.setQuery)
@@ -123,15 +145,23 @@ export interface FuzzyTabsProps extends FuzzyActionProps {
 
 const isIndexing = new Set<string>()
 
+function updatedTabs(tabs: FuzzyTabs, query: string): Partial<Tabs> {
+    const active = activeTab(query)
+    const updatedTabs: Partial<Tabs> = {}
+    for (const [key, value] of tabs.entries()) {
+        const newValue = value.withState(active === key ? FuzzyTabState.Active : FuzzyTabState.Enabled)
+        if (newValue) {
+            updatedTabs[key] = newValue
+        }
+    }
+    return updatedTabs
+}
+
 function activeTab(query: string): keyof Tabs {
-    if (query.startsWith('/')) {
-        return 'files'
-    }
-    if (query.startsWith('#')) {
-        return 'symbols'
-    }
-    if (query.startsWith('>')) {
-        return 'actions'
+    for (const [key, character] of Object.entries(tabCharacters)) {
+        if (character.length > 0 && query.startsWith(character)) {
+            return key as keyof Tabs
+        }
     }
     return 'all'
 }
@@ -166,25 +196,19 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
                 lines: hiddenKind,
             },
             actions,
-            query,
+            '',
             setQuery
-        )
+        ).withQuery(query)
     })
+    const tabsRef = useRef(tabs)
+    tabsRef.current = tabs
 
     // Keep `tabs` in-sync with `query`
-    const active = activeTab(query)
     useEffect(() => {
-        const updatedTabs: Partial<Tabs> = {}
-        for (const [key, value] of tabs.entries()) {
-            const newValue = value.withState(active === key ? FuzzyTabState.Active : FuzzyTabState.Enabled)
-            if (newValue) {
-                updatedTabs[key] = newValue
-            }
+        if (tabs.query !== query) {
+            setTabs(tabs.withQuery(queryRef.current))
         }
-        if (tabs.query !== query || Object.keys(updatedTabs).length > 0) {
-            setTabs(tabs.withQuery(queryRef.current).withTabs(updatedTabs))
-        }
-    }, [query, active, tabs])
+    }, [query])
 
     useEffect(() => {
         for (const [key, value] of tabs.entries()) {

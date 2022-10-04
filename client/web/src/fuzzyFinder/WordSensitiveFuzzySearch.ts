@@ -16,8 +16,7 @@ const MAX_VALUE_LENGTH = 100
 // Chromium.
 const DEFAULT_BLOOM_FILTER_HASH_FUNCTION_COUNT = 1
 
-// const DEFAULT_INDEXING_BUCKET_SIZE = 25_000
-const DEFAULT_INDEXING_BUCKET_SIZE = 2000
+const DEFAULT_INDEXING_BUCKET_SIZE = 25_000
 // The number of filenames to group together in a single bucket, and the number
 // string prefixes that each bloom can contain.  Currently, every bucket can
 // contain up to 262.144 prefixes (conservatively large number).  With bucket
@@ -473,5 +472,5 @@ class Indexer {
 }
 
 async function later(): Promise<void> {
-    return new Promise(resolve => setTimeout(() => resolve(), 2000))
+    return new Promise(resolve => setTimeout(() => resolve(), 0))
 }
