@@ -277,7 +277,6 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                     placeholder="Enter a partial file path or name"
                     defaultValue={props.tabs.query}
                     onChange={event => {
-                        handleChange(event)
                         props.tabs.setQuery(event.target.value)
                     }}
                     onKeyDown={onInputKeyDown}
