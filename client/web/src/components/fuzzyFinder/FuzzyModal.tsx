@@ -192,9 +192,6 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         document.querySelector(`#fuzzy-modal-result-${nextIndex}`)?.scrollIntoView(false)
     }
 
-    function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-        // console.log({ start: e.target.selectionStart, end: e.target.selectionEnd })
-    }
     function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
         switch (true) {
             case event.key === 'Escape':
@@ -284,16 +281,6 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                         props.tabs.setQuery(event.target.value)
                     }}
                     onKeyDown={onInputKeyDown}
-                    onMouseUp={event => {
-                        if ('selectionStart' in event.target) {
-                            // console.log({ selectionStart: (event.target as any).selectionStart })
-                        }
-                    }}
-                    onKeyUp={event => {
-                        if ('selectionStart' in event.target) {
-                            // console.log({ selectionStart: (event.target as any).selectionStart })
-                        }
-                    }}
                 />
                 <div className={styles.summary}>
                     <FuzzyResultsSummary

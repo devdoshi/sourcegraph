@@ -86,9 +86,6 @@ export class CaseInsensitiveFuzzySearch extends FuzzySearch {
                 }
             }
             const positions = compressedRangePositions([...offsets])
-            if (candidate.onClick) {
-                console.log({ candidate })
-            }
             return {
                 positions,
                 text: candidate.text,

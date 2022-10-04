@@ -96,12 +96,10 @@ export class FuzzyTabs {
     }
     public focusTabWithIncrement(increment: number): string {
         const activeIndex = this.entries().findIndex(([, tab]) => tab.isActive())
-        console.log({ increment, activeIndex })
         const nextIndex = activeIndex + increment
         return this.focusTab(nextIndex)
     }
     public focusTab(index: number): string {
-        console.log({ index })
         const [key] = this.entries().slice(index % this.entries().length)[0]
         const newQuery = tabCharacters[key] + this.trimmedQuery()
         this.setQuery(newQuery)
