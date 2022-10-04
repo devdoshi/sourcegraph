@@ -255,8 +255,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
             return
         }
         setTabs(
-            tabs.withQuery(queryRef.current).withTabs({
-                repos: tabs.tabs.repos.withFSM(reposFSM(query, repositories.current)),
+            tabsRef.current.withQuery(queryRef.current).withTabs({
+                repos: tabsRef.current.tabs.repos.withFSM(reposFSM(query, repositories.current)),
             })
         )
     }, [query])
@@ -264,7 +264,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
     useEffect(() => {
         setTabs(
             tabs.withQuery(queryRef.current).withTabs({
-                files: tabs.tabs.files.withFSM(
+                files: tabsRef.current.tabs.files.withFSM(
                     filesFSM({ downloadFilename, filenameError, isLoadingFilename }, filename =>
                         toPrettyBlobURL({
                             filePath: filename,
