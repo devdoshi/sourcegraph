@@ -17,7 +17,7 @@ const MAX_VALUE_LENGTH = 100
 const DEFAULT_BLOOM_FILTER_HASH_FUNCTION_COUNT = 1
 
 // const DEFAULT_INDEXING_BUCKET_SIZE = 25_000
-const DEFAULT_INDEXING_BUCKET_SIZE = 1000
+const DEFAULT_INDEXING_BUCKET_SIZE = 2000
 // The number of filenames to group together in a single bucket, and the number
 // string prefixes that each bloom can contain.  Currently, every bucket can
 // contain up to 262.144 prefixes (conservatively large number).  With bucket

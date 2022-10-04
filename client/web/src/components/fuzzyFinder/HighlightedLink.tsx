@@ -55,7 +55,17 @@ export const HighlightedLink: React.FunctionComponent<React.PropsWithChildren<Hi
             spans.push(<span key={key}>{text}</span>)
         }
     }
-    for (const position of props.positions) {
+    for (const [index, position] of props.positions.entries()) {
+        if (index > 0) {
+            const previous = props.positions[index - 1]
+            if (
+                previous.startOffset === position.startOffset &&
+                previous.endOffset === position.endOffset &&
+                previous.isExact === position.isExact
+            ) {
+                continue
+            }
+        }
         if (position.startOffset > start) {
             pushElement('span', start, position.startOffset)
         }

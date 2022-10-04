@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 
 import * as H from 'history'
 import useDeepCompareEffect from 'use-deep-compare-effect'
@@ -121,6 +121,8 @@ function activeTab(query: string): keyof Tabs {
     return 'all'
 }
 
+let latestQuery = ''
+
 export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     const { repoName = '', commitID = '', rawRevision = '' } = useMemo(
         () => parseBrowserRepoURL(props.location.pathname + props.location.search + props.location.hash),
@@ -134,6 +136,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     // Preserve Input" is enabled).
     const initialQuery = ''
     const [query, setQuery] = useSessionStorage(`fuzzy-modal.query.${repoName}`, initialQuery)
+    const queryRef = useRef(query)
+    queryRef.current = query
 
     const [tabs, setTabs] = useState<FuzzyTabs>(() => {
         const actions = allFuzzyActions(props)
@@ -154,12 +158,15 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         )
     })
 
-    const active = activeTab(query)
+    // Keep `tabs.query` up to date
     useEffect(() => {
         if (tabs.query !== query) {
             setTabs(tabs.withQuery(query))
         }
     }, [tabs, query])
+
+    // Keep `tabs.tabs.state` up to date with the query
+    const active = activeTab(query)
     useEffect(() => {
         const updatedTabs: Partial<Tabs> = {}
         for (const [key, value] of tabs.entries()) {
@@ -182,10 +189,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
                     .then(next => {
                         const updatedTabs: Partial<Tabs> = {}
                         updatedTabs[key] = value.withFSM(next)
-                        if (query !== tabs.query) {
-                            console.log({ query, tabQuery: tabs.query })
-                        }
-                        setTabs(tabs.withQuery(query).withTabs(updatedTabs))
+                        setTabs(tabs.withQuery(queryRef.current).withTabs(updatedTabs))
                     })
                     // eslint-disable-next-line no-console
                     .catch(error => console.error(`failed to index fuzzy tab ${key}`, error))
@@ -194,11 +198,16 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         }
     }, [tabs])
 
-    const filenameResult = useFilename(repoName, commitID || rawRevision)
+    const { downloadFilename, filenameError, isLoadingFilename } = useFilename(repoName, commitID || rawRevision)
 
-    useDeepCompareEffect(() => {
-        setTabs(tabs.withTabs({ files: tabs.tabs.files.withFSM(filesFSM(filenameResult)) }))
-    }, [filenameResult])
+    useEffect(() => {
+        console.log({ downloadFilename, filenameError, isLoadingFilename })
+        setTabs(
+            tabs.withTabs({
+                files: tabs.tabs.files.withFSM(filesFSM({ downloadFilename, filenameError, isLoadingFilename })),
+            })
+        )
+    }, [downloadFilename, filenameError, isLoadingFilename])
 
     return tabs
 }

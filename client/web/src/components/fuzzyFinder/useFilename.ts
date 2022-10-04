@@ -12,13 +12,14 @@ export interface FilenameResult {
     filenameError: ApolloError | undefined
 }
 
+const emptyArray: string[] = []
 export const useFilename = (repository: string, commit: string): FilenameResult => {
     const { data, loading, error } = useQuery<FileNamesResult, FileNamesVariables>(getDocumentNode(FILE_NAMES), {
         variables: { repository, commit },
     })
 
     return {
-        downloadFilename: data?.repository?.commit?.fileNames || [],
+        downloadFilename: data?.repository?.commit?.fileNames || emptyArray,
         isLoadingFilename: loading,
         filenameError: error,
     }
