@@ -8,7 +8,7 @@ import (
 
 	"github.com/sourcegraph/log"
 
-	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/shared"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/uploads"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 	"github.com/sourcegraph/sourcegraph/internal/trace"
 )
@@ -20,7 +20,7 @@ var (
 
 // GetService creates or returns an already-initialized ranking service.
 // If the service is not yet initialized, it will use the provided dependencies.
-func GetService(uploadSvc shared.UploadService) *Service {
+func GetService(uploadSvc *uploads.Service) *Service {
 	svcOnce.Do(func() {
 		oc := func(name string) *observation.Context {
 			return &observation.Context{

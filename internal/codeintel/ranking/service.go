@@ -7,18 +7,18 @@ import (
 	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
-	"github.com/sourcegraph/sourcegraph/internal/codeintel/autoindexing/shared"
+	"github.com/sourcegraph/sourcegraph/internal/codeintel/uploads"
 	"github.com/sourcegraph/sourcegraph/internal/observation"
 )
 
 type Service struct {
-	uploadSvc  shared.UploadService
+	uploadSvc  *uploads.Service
 	operations *operations
 	logger     log.Logger
 }
 
 func newService(
-	uploadSvc shared.UploadService,
+	uploadSvc *uploads.Service,
 	observationContext *observation.Context,
 ) *Service {
 	return &Service{
