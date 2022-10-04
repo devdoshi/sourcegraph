@@ -14,7 +14,7 @@ import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
 import { newFuzzyFSM, FuzzyFSM, Indexing } from './FuzzyFsm'
 import { filesFSM, useFilename } from './useFilename'
 
-enum TabState {
+export enum FuzzyTabState {
     Hidden,
     Disabled,
     Enabled,
@@ -24,16 +24,16 @@ enum TabState {
 class Tab {
     constructor(
         public readonly title: string,
-        public readonly state: TabState,
+        public readonly state: FuzzyTabState,
         public readonly fsm: FuzzyFSM | undefined = undefined
     ) {}
     public withFSM(fsm: FuzzyFSM): Tab {
         return new Tab(this.title, this.state, fsm)
     }
-    public withState(state: TabState.Active | TabState.Enabled): Tab | undefined {
+    public withState(state: FuzzyTabState.Active | FuzzyTabState.Enabled): Tab | undefined {
         switch (this.state) {
-            case TabState.Hidden:
-            case TabState.Disabled:
+            case FuzzyTabState.Hidden:
+            case FuzzyTabState.Disabled:
                 return undefined
             default:
                 if (state === this.state) {
@@ -43,19 +43,19 @@ class Tab {
         }
     }
     public isVisible(): boolean {
-        return this.state !== TabState.Hidden
+        return this.state !== FuzzyTabState.Hidden
     }
 }
 
 const defaultKinds: Tabs = {
-    all: new Tab('All', TabState.Enabled),
-    actions: new Tab('Actions', TabState.Enabled),
-    repos: new Tab('Repos', TabState.Enabled),
-    files: new Tab('Files', TabState.Enabled),
-    symbols: new Tab('Symbols', TabState.Enabled),
-    lines: new Tab('Lines', TabState.Enabled),
+    all: new Tab('All', FuzzyTabState.Enabled),
+    actions: new Tab('Actions', FuzzyTabState.Enabled),
+    repos: new Tab('Repos', FuzzyTabState.Enabled),
+    files: new Tab('Files', FuzzyTabState.Enabled),
+    symbols: new Tab('Symbols', FuzzyTabState.Enabled),
+    lines: new Tab('Lines', FuzzyTabState.Enabled),
 }
-const hiddenKind: Tab = new Tab('Hidden', TabState.Hidden)
+const hiddenKind: Tab = new Tab('Hidden', FuzzyTabState.Hidden)
 
 export interface Tabs {
     all: Tab
@@ -73,6 +73,18 @@ export class FuzzyTabs {
         public readonly query: string,
         public readonly setQuery: Dispatch<SetStateAction<string>>
     ) {}
+    public trimmedQuery(): string {
+        if (this.query.startsWith('/')) {
+            return this.query.replace(/^\/ */, '')
+        }
+        if (this.query.startsWith('#')) {
+            return this.query.replace(/^# */, '')
+        }
+        if (this.query.startsWith('>')) {
+            return this.query.replace(/^> */, '')
+        }
+        return this.query
+    }
     public entries(): [keyof Tabs, Tab][] {
         const result: [keyof Tabs, Tab][] = []
         for (const key of Object.keys(this.tabs)) {
@@ -81,6 +93,9 @@ export class FuzzyTabs {
             result.push([key as keyof Tabs, value])
         }
         return result
+    }
+    public isActive(state: FuzzyTabState): boolean {
+        return state === FuzzyTabState.Active || this.tabs.all.state == FuzzyTabState.Active
     }
     public withQuery(newQuery: string): FuzzyTabs {
         return new FuzzyTabs(this.tabs, this.actions, newQuery, this.setQuery)
@@ -96,7 +111,7 @@ export class FuzzyTabs {
         return this.all().find(tab => tab.fsm && tab.fsm.key === 'downloading') === undefined
     }
     public isAllHidden(): boolean {
-        return this.all().find(tab => tab.state !== TabState.Hidden) === undefined
+        return this.all().find(tab => tab.state !== FuzzyTabState.Hidden) === undefined
     }
 }
 
@@ -121,8 +136,6 @@ function activeTab(query: string): keyof Tabs {
     return 'all'
 }
 
-let latestQuery = ''
-
 export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     const { repoName = '', commitID = '', rawRevision = '' } = useMemo(
         () => parseBrowserRepoURL(props.location.pathname + props.location.search + props.location.hash),
@@ -143,7 +156,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         const actions = allFuzzyActions(props)
         return new FuzzyTabs(
             {
-                all: hiddenKind,
+                all: fuzzyFinderActions ? defaultKinds.all : hiddenKind,
                 actions: fuzzyFinderActions
                     ? defaultKinds.actions.withFSM(newFuzzyFSM(actions.map(action => action.title)))
                     : hiddenKind,
@@ -158,27 +171,20 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
         )
     })
 
-    // Keep `tabs.query` up to date
-    useEffect(() => {
-        if (tabs.query !== query) {
-            setTabs(tabs.withQuery(query))
-        }
-    }, [tabs, query])
-
-    // Keep `tabs.tabs.state` up to date with the query
+    // Keep `tabs` in-sync with `query`
     const active = activeTab(query)
     useEffect(() => {
         const updatedTabs: Partial<Tabs> = {}
         for (const [key, value] of tabs.entries()) {
-            const newValue = value.withState(active === key ? TabState.Active : TabState.Enabled)
+            const newValue = value.withState(active === key ? FuzzyTabState.Active : FuzzyTabState.Enabled)
             if (newValue) {
                 updatedTabs[key] = newValue
             }
         }
-        if (Object.keys(updatedTabs).length > 0) {
-            setTabs(tabs.withTabs(updatedTabs))
+        if (tabs.query !== query || Object.keys(updatedTabs).length > 0) {
+            setTabs(tabs.withQuery(queryRef.current).withTabs(updatedTabs))
         }
-    }, [active, tabs])
+    }, [query, active, tabs])
 
     useEffect(() => {
         for (const [key, value] of tabs.entries()) {
@@ -201,9 +207,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
     const { downloadFilename, filenameError, isLoadingFilename } = useFilename(repoName, commitID || rawRevision)
 
     useEffect(() => {
-        console.log({ downloadFilename, filenameError, isLoadingFilename })
         setTabs(
-            tabs.withTabs({
+            tabs.withQuery(queryRef.current).withTabs({
                 files: tabs.tabs.files.withFSM(filesFSM({ downloadFilename, filenameError, isLoadingFilename })),
             })
         )

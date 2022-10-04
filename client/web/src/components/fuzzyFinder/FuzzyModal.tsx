@@ -11,8 +11,7 @@ import { AggregateFuzzySearch } from '../../fuzzyFinder/AggregateFuzzySearch'
 import { FuzzySearch, FuzzySearchResult } from '../../fuzzyFinder/FuzzySearch'
 import { parseBrowserRepoURL } from '../../util/url'
 
-import { FuzzyFSM, Indexing } from './FuzzyFsm'
-import { FuzzyTabs } from './FuzzyTabs'
+import { FuzzyTabs, FuzzyTabState } from './FuzzyTabs'
 import { HighlightedLink } from './HighlightedLink'
 
 import styles from './FuzzyModal.module.scss'
@@ -59,7 +58,7 @@ function renderFiles(
     search: FuzzySearch,
     indexingFileCount: number
 ): QueryResult {
-    const query = props.tabs.query
+    const query = props.tabs.trimmedQuery()
     // Parse the URL here instead of accepting it as a React prop because the
     // URL can change based on shortcuts like `y` that won't trigger a re-render
     // in React. By parsing the URL here, we avoid the risk of rendering links to a revision that
@@ -158,7 +157,11 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         const errors: string[] = []
         const searches: FuzzySearch[] = []
         let indexingFileCount = 0
-        for (const [, tab] of props.tabs.entries()) {
+        for (const [key, tab] of props.tabs.entries()) {
+            console.log({ key, isActive: props.tabs.isActive(tab.state) })
+            if (!props.tabs.isActive(tab.state)) {
+                continue
+            }
             if (!tab.fsm) {
                 continue
             }
@@ -236,7 +239,14 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                         .all()
                         .filter(tab => tab.isVisible())
                         .map(tab => (
-                            <H3 key={tab.title} className="mb-0">
+                            <H3
+                                key={tab.title}
+                                className={classNames(
+                                    'mb-0',
+                                    styles.tab,
+                                    tab.state === FuzzyTabState.Active ? styles.activeTab : ''
+                                )}
+                            >
                                 {tab.title}
                             </H3>
                         ))}
@@ -257,7 +267,7 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                     id="fuzzy-modal-input"
                     className={styles.input}
                     placeholder="Enter a partial file path or name"
-                    value={props.tabs.query}
+                    defaultValue={props.tabs.query}
                     onChange={({ target: { value } }) => {
                         props.tabs.setQuery(value)
                     }}
@@ -305,7 +315,7 @@ const FuzzyResultsSummary: React.FunctionComponent<React.PropsWithChildren<Fuzzy
     <>
         <span className={styles.resultCount}>
             {plural('result', resultsCount, isComplete)} - {indexingProgressBar(tabs)}{' '}
-            {plural('total file', totalFileCount, true)}
+            {plural('total', totalFileCount, true)}
         </span>
         <i className="text-muted">
             <kbd>↑</kbd> and <kbd>↓</kbd> arrow keys browse. <kbd>⏎</kbd> selects.

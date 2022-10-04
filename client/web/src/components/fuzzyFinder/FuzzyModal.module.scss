@@ -61,3 +61,12 @@
 .show-more {
     align-self: center;
 }
+
+.tab {
+    margin: auto;
+    padding: auto;
+}
+.active-tab {
+    background-color: var(--color-bg-2);
+    text-decoration: underline;
+}
