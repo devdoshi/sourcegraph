@@ -76,12 +76,19 @@ export class WordSensitiveFuzzySearch extends FuzzySearch {
                 return { key: 'ready', value: indexer.complete() }
             }
             indexer.processBuckets(DEFAULT_INDEXING_BUCKET_SIZE)
+            let indexingPromise: Promise<void> | undefined
             return {
                 key: 'indexing',
                 indexedFileCount: indexer.indexedFileCount(),
                 totalFileCount: indexer.totalFileCount(),
                 partialFuzzy: indexer.complete(),
-                continue: () => later().then(() => loop()),
+                isIndexing: () => indexingPromise !== undefined,
+                continueIndexing: () => {
+                    if (!indexingPromise) {
+                        indexingPromise = later().then(() => loop())
+                    }
+                    return indexingPromise
+                },
             }
         }
         return loop()

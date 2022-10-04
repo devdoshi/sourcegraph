@@ -24,7 +24,8 @@ export interface SearchIndexing {
     indexedFileCount: number
     totalFileCount: number
     partialFuzzy: FuzzySearch
-    continue: () => Promise<IndexingFSM>
+    isIndexing: () => boolean
+    continueIndexing: () => Promise<IndexingFSM>
 }
 export interface SearchReady {
     key: 'ready'

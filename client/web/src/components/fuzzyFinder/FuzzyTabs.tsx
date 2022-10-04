@@ -143,8 +143,6 @@ export interface FuzzyTabsProps extends FuzzyActionProps {
     location: H.Location
 }
 
-const isIndexing = new Set<string>()
-
 function updatedTabs(tabs: FuzzyTabs, query: string): Partial<Tabs> {
     const active = activeTab(query)
     const updatedTabs: Partial<Tabs> = {}
@@ -212,18 +210,20 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
 
     useEffect(() => {
         for (const [key, value] of tabs.entries()) {
-            // TODO: move `isIndexing` into FSM
-            if (!isIndexing.has(key) && value.fsm?.key === 'indexing') {
-                isIndexing.add(value.title)
+            if (!value.fsm) {
+                continue
+            }
+            if (value.fsm.key === 'indexing' && !value.fsm.indexing.isIndexing()) {
                 continueIndexing(value.fsm.indexing)
                     .then(next => {
                         const updatedTabs: Partial<Tabs> = {}
                         updatedTabs[key] = value.withFSM(next)
-                        setTabs(tabs.withQuery(queryRef.current).withTabs(updatedTabs))
+                        const newTabs = tabsRef.current.withQuery(queryRef.current)
+                        newTabs.tabs[key] = newTabs.tabs[key].withFSM(next)
+                        setTabs(newTabs)
                     })
                     // eslint-disable-next-line no-console
                     .catch(error => console.error(`failed to index fuzzy tab ${key}`, error))
-                    .finally(() => isIndexing.delete(value.title))
             }
         }
     }, [tabs])
@@ -242,7 +242,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps): FuzzyTabs {
 }
 
 async function continueIndexing(indexing: SearchIndexing): Promise<FuzzyFSM> {
-    const next = await indexing.continue()
+    const next = await indexing.continueIndexing()
     if (next.key === 'indexing') {
         return { key: 'indexing', indexing: next }
     }
