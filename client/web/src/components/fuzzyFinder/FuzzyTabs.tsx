@@ -1,9 +1,9 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import * as H from 'history'
 
 import { Settings, SettingsCascadeOrError } from '@sourcegraph/shared/src/settings/settings'
-import { useSessionStorage } from '@sourcegraph/wildcard'
+import { useLocalStorage, useSessionStorage } from '@sourcegraph/wildcard'
 
 import { SearchIndexing } from '../../fuzzyFinder/FuzzySearch'
 import { getExperimentalFeatures } from '../../util/get-experimental-features'
@@ -13,6 +13,7 @@ import { allFuzzyActions, FuzzyAction, FuzzyActionProps } from './FuzzyAction'
 import { FuzzyFSM, newFuzzyFSMFromValues } from './FuzzyFsm'
 import { filesFSM, useFilename } from './useFilename'
 import { toPrettyBlobURL } from '@sourcegraph/shared/src/util/url'
+import { Repositories } from './Repositories'
 
 export enum FuzzyTabState {
     Hidden,
@@ -175,7 +176,8 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
         [props.location]
     )
 
-    const { fuzzyFinderActions } = getExperimentalFeatures(props.settingsCascade.final) ?? false
+    const { fuzzyFinderActions, fuzzyFinderRepositories } =
+        getExperimentalFeatures(props.settingsCascade.final) ?? false
 
     // NOTE: the query is cached in session storage to mimic the file pickers in
     // IntelliJ (by default) and VS Code (when "Workbench > Quick Open >
@@ -198,7 +200,7 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
                           )
                       )
                     : hiddenKind,
-                repos: hiddenKind,
+                repos: fuzzyFinderRepositories ? defaultKinds.repos : hiddenKind,
                 files: props.isRepositoryRelatedPage ? defaultKinds.files : hiddenKind,
                 symbols: hiddenKind,
                 lines: hiddenKind,
@@ -211,6 +213,12 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
     })
     const tabsRef = useRef(tabs)
     tabsRef.current = tabs
+
+    const [repositoryNames, setRepositoryNames] = useLocalStorage<string[]>('fuzzy-finder.repositories', [])
+    const setUniqueRepositoryNames = useCallback((newNames: string[]): void => {
+        setRepositoryNames(oldNames => [...new Set([...oldNames, ...newNames])])
+    }, [])
+    const repositories = useRef(new Repositories(repositoryNames, setUniqueRepositoryNames))
 
     // Keep `tabs` in-sync with `query`
     useEffect(() => {
@@ -242,6 +250,18 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
     const { downloadFilename, filenameError, isLoadingFilename } = useFilename(repoName, commitID || rawRevision)
 
     useEffect(() => {
+        const isRepoActive = tabsRef.current.isActive(tabsRef.current.tabs.repos.state)
+        if (!isRepoActive) {
+            return
+        }
+        setTabs(
+            tabs.withQuery(queryRef.current).withTabs({
+                repos: tabs.tabs.repos.withFSM(reposFSM(query, repositories.current)),
+            })
+        )
+    }, [query])
+
+    useEffect(() => {
         setTabs(
             tabs.withQuery(queryRef.current).withTabs({
                 files: tabs.tabs.files.withFSM(
@@ -269,5 +289,21 @@ async function continueIndexing(indexing: SearchIndexing): Promise<FuzzyFSM> {
     return {
         key: 'ready',
         fuzzy: next.value,
+    }
+}
+
+function reposFSM(query: string, repos: Repositories): FuzzyFSM {
+    if (!repos.hasQuery(query)) {
+        repos.handleQuery(query)
+    }
+    if (repos.queries.size === 0) {
+        return {
+            key: 'ready',
+            fuzzy: repos.fuzzySearch(),
+        }
+    }
+    return {
+        key: 'indexing',
+        indexing: repos.indexingFSM(),
     }
 }
