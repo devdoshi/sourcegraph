@@ -132,7 +132,7 @@ export class FuzzyTabs {
         return new FuzzyTabs({ ...this.tabs, ...newTabs }, this.actions, this.query, this.setQuery, this.onClickItem)
     }
     public all(): Tab[] {
-        return Object.values(this.tabs)
+        return Object.values(this.tabs).filter(tab => tab.isVisible())
         // return [this.tabs.all, this.tabs.actions, this.tabs.repos, this.tabs.files, this.tabs.lines]
     }
     public isDownloading(): boolean {
@@ -216,7 +216,6 @@ export function useFuzzyTabs(props: FuzzyTabsProps, onClickItem: () => void): Fu
     // Keep `tabs` in-sync with `query`
     useEffect(() => {
         if (tabs.query !== query) {
-            console.log({ newTabs: tabs.withQuery(query) })
             setTabs(tabs.withQuery(query))
         }
     }, [query])

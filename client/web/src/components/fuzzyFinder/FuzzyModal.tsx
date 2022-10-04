@@ -192,6 +192,20 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         document.querySelector(`#fuzzy-modal-result-${nextIndex}`)?.scrollIntoView(false)
     }
 
+    function onFocusStateChange(target: HTMLInputElement, onFocus: () => string): void {
+        const oldValue = target.value
+        const oldStart = target.selectionStart
+        const oldEnd = target.selectionEnd
+        const newValue = onFocus()
+        const increment = newValue.length - oldValue.length
+        target.value = newValue
+        if (oldStart !== null && oldEnd !== null) {
+            target.setSelectionRange(oldStart + increment, oldEnd + increment)
+        } else if (oldStart !== null) {
+            target.setSelectionRange(oldStart + increment, null)
+        }
+    }
+
     function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
         switch (true) {
             case event.key === 'Escape':
@@ -223,18 +237,9 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
                 break
             case event.key === 'Tab':
                 event.preventDefault()
-                const target = event.target as HTMLInputElement
-                const oldValue = target.value
-                const oldStart = target.selectionStart
-                const oldEnd = target.selectionEnd
-                const newValue = props.tabs.focusTabWithIncrement(event.shiftKey ? -1 : 1)
-                const increment = newValue.length - oldValue.length
-                target.value = newValue
-                if (oldStart !== null && oldEnd !== null) {
-                    target.setSelectionRange(oldStart + increment, oldEnd + increment)
-                } else if (oldStart !== null) {
-                    target.setSelectionRange(oldStart + increment, null)
-                }
+                onFocusStateChange(event.target as HTMLInputElement, () =>
+                    props.tabs.focusTabWithIncrement(event.shiftKey ? -1 : 1)
+                )
             default:
         }
     }
@@ -243,21 +248,25 @@ export const FuzzyModal: React.FunctionComponent<React.PropsWithChildren<FuzzyMo
         <Modal position="center" className={styles.modal} onDismiss={() => props.onClose()} aria-label="Fuzzy finder">
             <div className={styles.content}>
                 <div className={styles.header}>
-                    {props.tabs
-                        .all()
-                        .filter(tab => tab.isVisible())
-                        .map(tab => (
-                            <H3
-                                key={tab.title}
-                                className={classNames(
-                                    'mb-0',
-                                    styles.tab,
-                                    tab.state === FuzzyTabState.Active ? styles.activeTab : ''
-                                )}
-                            >
-                                {tab.title}
-                            </H3>
-                        ))}
+                    {props.tabs.all().map((tab, index) => (
+                        <H3
+                            role="link"
+                            onClick={() => {
+                                onFocusStateChange(
+                                    document.querySelector('#fuzzy-modal-input') as HTMLInputElement,
+                                    () => props.tabs.focusTab(index)
+                                )
+                            }}
+                            key={tab.title}
+                            className={classNames(
+                                'mb-0',
+                                styles.tab,
+                                tab.state === FuzzyTabState.Active ? styles.activeTab : ''
+                            )}
+                        >
+                            {tab.title}
+                        </H3>
+                    ))}
                     <Button variant="icon" onClick={() => props.onClose()} aria-label="Close">
                         <Icon className={styles.closeIcon} aria-hidden={true} svgPath={mdiClose} />
                     </Button>
