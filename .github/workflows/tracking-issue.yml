@@ -1,7 +1,5 @@
 name: Tracking Issue Syncer
 on:
-  schedule:
-  - cron: '*/15 * * * *'
   issues:
     types:
     - opened
