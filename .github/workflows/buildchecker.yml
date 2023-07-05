@@ -1,8 +1,6 @@
 # See dev/buildchecker/README.md
 name: buildchecker
 on:
-  schedule:
-  - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
